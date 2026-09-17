@@ -4,6 +4,8 @@ FlutterアプリにAPIキーを含めず、Cloudflare Worker経由でGeminiを�
 
 - `POST /analyze-expiry`: 写真から商品名・賞味期限・カテゴリーを抽出
 - `POST /identify-product`: 会話しながら商品と期限を特定
+- `POST /suggest-recipes`: 登録済みの食材・調味料からレシピを3件生成
+- `POST /recipe-chat`: 登録済み食品を踏まえてAIシェフが料理相談へ回答
 
 既定モデルは`gemini-3.8-flash`です。混雑による一時エラー時は`gemini-3.5-flash`、`gemini-3.5-flash-lite`の順に自動で切り替えます。`GEMINI_MODEL`と`GEMINI_FALLBACK_MODELS`で変更できます。thinkingトークンも出力料金の対象になるため、公開前に[Gemini APIの料金](https://ai.google.dev/gemini-api/docs/pricing)を確認してください。
 
@@ -77,5 +79,21 @@ APIキーはFlutterアプリや`wrangler.toml`へ記載しないでください�
   "confidence": 0.96
 }
 ```
+
+レシピ生成リクエスト:
+
+```json
+{
+  "items": [
+    {"name": "絹ごし豆腐", "category": "冷蔵品", "expiryDate": "2026-09-18", "daysRemaining": 1},
+    {"name": "みそ", "category": "調味料", "expiryDate": "2027-01-10", "daysRemaining": 115}
+  ],
+  "preference": "15分以内で辛くないもの",
+  "today": "2026-09-17",
+  "locale": "ja-JP"
+}
+```
+
+料理チャットは同じ`items`と、`identify-product`と同形式の`messages`を`POST /recipe-chat`へ送ります。期限切れ（`daysRemaining`が負）の食品は、Worker側でもレシピ候補から除外します。
 
 本番公開時は、利用回数制限・アプリ認証・監視をWorkerへ追加してください。

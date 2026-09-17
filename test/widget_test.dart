@@ -117,6 +117,89 @@ void main() {
     expect(find.text('青森りんごジュース'), findsWidgets);
   });
 
+  testWidgets('登録食品からAIレシピを生成してチャット相談できる', (tester) async {
+    final now = DateTime.now();
+    final aiClient = MockClient((request) async {
+      if (request.url.path == '/suggest-recipes') {
+        return http.Response(
+          jsonEncode({
+            'recipes': [
+              {
+                'title': '豆腐のみそ炒め',
+                'description': '登録品を活用するレシピです。',
+                'cookTimeMinutes': 15,
+                'servings': '2人分',
+                'ingredients': [
+                  {'name': '豆腐', 'amount': '1丁', 'available': true},
+                  {'name': 'みそ', 'amount': '大さじ1', 'available': true},
+                ],
+                'steps': ['豆腐を切る', 'みそと炒める'],
+                'usesRegisteredItems': ['豆腐', 'みそ'],
+                'tip': '豆腐を水切りします。',
+              },
+            ],
+          }),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      if (request.url.path == '/recipe-chat') {
+        return http.Response(
+          jsonEncode({'reply': '弱火で炒めると作れます。'}),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('{}', 404);
+    });
+    final items = [
+      FoodItem(
+        id: 'tofu',
+        name: '豆腐',
+        category: '冷蔵品',
+        expiryDate: now.add(const Duration(days: 1)),
+        registeredAt: now,
+        registeredWithAi: false,
+      ),
+      FoodItem(
+        id: 'miso',
+        name: 'みそ',
+        category: '調味料',
+        expiryDate: now.add(const Duration(days: 30)),
+        registeredAt: now,
+        registeredWithAi: false,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      DueBiteApp(
+        repository: FoodRepository(),
+        notificationService: NotificationService(),
+        initialSnapshot: AppSnapshot(items: items, points: 0),
+        aiService: AiExpiryService(client: aiClient),
+      ),
+    );
+    await tester.tap(find.text('レシピ'));
+    await tester.pumpAndSettle();
+    expect(find.text('AIレシピ'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('generate-recipes-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('豆腐のみそ炒め'), findsOneWidget);
+
+    await tester.drag(
+      find.byKey(const PageStorageKey('recipe-scroll')),
+      const Offset(0, -520),
+    );
+    await tester.pumpAndSettle();
+    final chatField = find.byKey(const Key('recipe-chat-field'));
+    expect(chatField, findsOneWidget);
+    await tester.enterText(chatField, 'もっと簡単にできる？');
+    await tester.tap(find.byKey(const Key('recipe-chat-send-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('弱火で炒めると作れます。'), findsOneWidget);
+  });
+
   testWidgets('期限内に食べきるとポイントが増える', (tester) async {
     final now = DateTime.now();
     final item = FoodItem(

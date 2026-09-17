@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'models/food_item.dart';
 import 'models/player_level.dart';
+import 'models/recipe_suggestion.dart';
 import 'services/ai_expiry_service.dart';
 import 'services/food_repository.dart';
 import 'services/notification_service.dart';
@@ -583,6 +584,7 @@ class _ExpiryHomeState extends State<ExpiryHome> {
         onSeeAll: () => setState(() => _pageIndex = 1),
       ),
       FoodListPage(items: _items, onConsume: _consume, onDelete: _delete),
+      RecipePage(items: _activeItems, aiService: _aiService),
       PointsPage(items: _items, points: _points),
     ];
 
@@ -613,6 +615,11 @@ class _ExpiryHomeState extends State<ExpiryHome> {
             icon: Icon(Icons.kitchen_outlined),
             selectedIcon: Icon(Icons.kitchen_rounded, color: _orange),
             label: '食品',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book_rounded, color: _orange),
+            label: 'レシピ',
           ),
           NavigationDestination(
             icon: Icon(Icons.stars_outlined),
@@ -1148,6 +1155,599 @@ class _WasteTipCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RecipePage extends StatefulWidget {
+  const RecipePage({super.key, required this.items, required this.aiService});
+
+  final List<FoodItem> items;
+  final AiExpiryService aiService;
+
+  @override
+  State<RecipePage> createState() => _RecipePageState();
+}
+
+class _RecipePageState extends State<RecipePage> {
+  final _preferenceController = TextEditingController();
+  final _chatController = TextEditingController();
+  List<RecipeSuggestion> _recipes = const [];
+  final List<ProductChatMessage> _chat = [];
+  bool _loadingRecipes = false;
+  bool _sendingChat = false;
+  String? _recipeError;
+  String? _chatError;
+
+  List<FoodItem> get _usableItems => widget.items
+      .where((item) => !item.isConsumed && item.daysRemaining >= 0)
+      .toList();
+
+  @override
+  void dispose() {
+    _preferenceController.dispose();
+    _chatController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _generateRecipes() async {
+    if (_usableItems.isEmpty || _loadingRecipes) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _loadingRecipes = true;
+      _recipeError = null;
+    });
+    try {
+      final recipes = await widget.aiService.suggestRecipes(
+        _usableItems,
+        preference: _preferenceController.text,
+      );
+      if (!mounted) return;
+      setState(() => _recipes = recipes);
+    } on AiExpiryException catch (error) {
+      if (mounted) setState(() => _recipeError = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _recipeError = 'レシピの生成に失敗しました。もう一度お試しください');
+    } finally {
+      if (mounted) setState(() => _loadingRecipes = false);
+    }
+  }
+
+  Future<void> _sendChat() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty || _sendingChat || _usableItems.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    _chatController.clear();
+    setState(() {
+      _chat.add(ProductChatMessage(role: 'user', text: text));
+      _sendingChat = true;
+      _chatError = null;
+    });
+    try {
+      final reply = await widget.aiService.chatAboutRecipes(
+        _usableItems,
+        List<ProductChatMessage>.unmodifiable(_chat),
+      );
+      if (!mounted) return;
+      setState(
+        () => _chat.add(ProductChatMessage(role: 'assistant', text: reply)),
+      );
+    } on AiExpiryException catch (error) {
+      if (mounted) setState(() => _chatError = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _chatError = 'AIシェフへの送信に失敗しました');
+    } finally {
+      if (mounted) setState(() => _sendingChat = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final usableItems = _usableItems;
+    return ListView(
+      key: const PageStorageKey('recipe-scroll'),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 130),
+      children: [
+        const _PageTitle(title: 'AIレシピ', subtitle: '登録した食材と調味料から、今日の献立を提案'),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_green, Color.lerp(_green, _orange, .35)!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    'AIが期限の近い食品を優先',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                usableItems.isEmpty
+                    ? '期限内の食品を登録すると、レシピを作れます。'
+                    : '${usableItems.length}個の登録品を組み合わせて、3つのレシピを作ります。',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .9),
+                  height: 1.45,
+                ),
+              ),
+              if (usableItems.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: usableItems
+                      .take(8)
+                      .map(
+                        (item) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .18),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${_foodEmoji(item.category)} ${item.name}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        TextField(
+          key: const Key('recipe-preference-field'),
+          controller: _preferenceController,
+          maxLength: 200,
+          minLines: 1,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: '希望があれば入力（任意）',
+            hintText: '例：15分以内、和食、辛くないもの',
+            prefixIcon: Icon(Icons.tune_rounded),
+          ),
+        ),
+        const SizedBox(height: 4),
+        FilledButton.icon(
+          key: const Key('generate-recipes-button'),
+          onPressed: usableItems.isEmpty || _loadingRecipes
+              ? null
+              : _generateRecipes,
+          style: FilledButton.styleFrom(
+            backgroundColor: _orange,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(17),
+            ),
+          ),
+          icon: _loadingRecipes
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.auto_awesome_rounded),
+          label: Text(
+            _loadingRecipes ? 'AIが考えています…' : 'AIにレシピを作ってもらう',
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        if (_recipeError != null) ...[
+          const SizedBox(height: 12),
+          _RecipeError(message: _recipeError!, onRetry: _generateRecipes),
+        ],
+        if (_recipes.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          const _SectionHeader(title: 'おすすめレシピ'),
+          const SizedBox(height: 12),
+          for (var index = 0; index < _recipes.length; index++) ...[
+            _RecipeCard(recipe: _recipes[index], index: index),
+            const SizedBox(height: 12),
+          ],
+        ],
+        const SizedBox(height: 24),
+        _RecipeChatPanel(
+          messages: _chat,
+          controller: _chatController,
+          enabled: usableItems.isNotEmpty && !_sendingChat,
+          sending: _sendingChat,
+          error: _chatError,
+          onSend: _sendChat,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'AIの提案には誤りが含まれる場合があります。アレルギー、食品の状態、十分な加熱を必ずご自身で確認してください。',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: context.appColors.muted,
+            fontSize: 10.5,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecipeCard extends StatelessWidget {
+  const _RecipeCard({required this.recipe, required this.index});
+
+  final RecipeSuggestion recipe;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: ValueKey('recipe-card-$index'),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.appColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: context.appColors.orangeSoft,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Text(
+            ['🍳', '🥘', '🍲'][index % 3],
+            style: const TextStyle(fontSize: 23),
+          ),
+        ),
+        title: Text(
+          recipe.title,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Text(
+            '約${recipe.cookTimeMinutes}分  ・  ${recipe.servings}',
+            style: TextStyle(color: context.appColors.muted, fontSize: 12),
+          ),
+        ),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              recipe.description,
+              style: TextStyle(color: context.appColors.muted, height: 1.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const _RecipeLabel(icon: Icons.shopping_basket_outlined, text: '材料'),
+          const SizedBox(height: 8),
+          for (final ingredient in recipe.ingredients)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                children: [
+                  Icon(
+                    ingredient.available
+                        ? Icons.check_circle_rounded
+                        : Icons.add_circle_outline_rounded,
+                    size: 18,
+                    color: ingredient.available
+                        ? context.appColors.green
+                        : context.appColors.warning,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(ingredient.name)),
+                  Text(
+                    ingredient.amount,
+                    style: TextStyle(color: context.appColors.muted),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          const _RecipeLabel(
+            icon: Icons.format_list_numbered_rounded,
+            text: '作り方',
+          ),
+          const SizedBox(height: 8),
+          for (var step = 0; step < recipe.steps.length; step++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: _orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${step + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      recipe.steps[step],
+                      style: const TextStyle(height: 1.45),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (recipe.tip.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: context.appColors.greenSoft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                '💡 ${recipe.tip}',
+                style: TextStyle(color: context.appColors.green, height: 1.4),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RecipeLabel extends StatelessWidget {
+  const _RecipeLabel({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 19, color: _orange),
+        const SizedBox(width: 7),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+}
+
+class _RecipeError extends StatelessWidget {
+  const _RecipeError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.appColors.dangerSoft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, color: context.appColors.danger),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message)),
+          TextButton(onPressed: onRetry, child: const Text('再試行')),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecipeChatPanel extends StatelessWidget {
+  const _RecipeChatPanel({
+    required this.messages,
+    required this.controller,
+    required this.enabled,
+    required this.sending,
+    required this.error,
+    required this.onSend,
+  });
+
+  final List<ProductChatMessage> messages;
+  final TextEditingController controller;
+  final bool enabled;
+  final bool sending;
+  final String? error;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('recipe-chat-panel'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.appColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.appColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: context.appColors.agentSoft,
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  Icons.forum_rounded,
+                  color: context.appColors.agent,
+                ),
+              ),
+              const SizedBox(width: 11),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AIシェフに相談',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    Text('代用品や作り方を追加で質問できます', style: TextStyle(fontSize: 11)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: context.appColors.greenSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'LIVE AI',
+                  style: TextStyle(
+                    color: context.appColors.green,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (messages.isEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              '例：「卵なしに変えられる？」「この食材で10分以内に作りたい」',
+              style: TextStyle(
+                color: context.appColors.muted,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 15),
+            for (final message in messages)
+              Align(
+                alignment: message.role == 'user'
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10,
+                  ),
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  decoration: BoxDecoration(
+                    color: message.role == 'user'
+                        ? _orange
+                        : context.appColors.agentSoft,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.role == 'user'
+                          ? Colors.white
+                          : context.appColors.text,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          if (sending)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Text(
+                'AIシェフが考えています…',
+                style: TextStyle(color: context.appColors.muted, fontSize: 12),
+              ),
+            ),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Text(
+                error!,
+                style: TextStyle(color: context.appColors.danger),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('recipe-chat-field'),
+                  controller: controller,
+                  enabled: enabled,
+                  minLines: 1,
+                  maxLines: 3,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => onSend(),
+                  decoration: const InputDecoration(
+                    hintText: 'AIシェフに質問…',
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                key: const Key('recipe-chat-send-button'),
+                onPressed: enabled ? onSend : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: _orange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                ),
+                icon: const Icon(Icons.arrow_upward_rounded),
+              ),
+            ],
           ),
         ],
       ),
@@ -2654,6 +3254,7 @@ class _FoodEditorPageState extends State<FoodEditorPage> {
     '肉・魚',
     '野菜・果物',
     'お惣菜',
+    '調味料',
     'その他',
   ];
 
@@ -3042,6 +3643,7 @@ String _foodEmoji(String category) => switch (category) {
   '肉・魚' => '🐟',
   '野菜・果物' => '🥕',
   'お惣菜' => '🍱',
+  '調味料' => '🧂',
   _ => '🍽️',
 };
 

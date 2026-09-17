@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_application_1/services/ai_expiry_service.dart';
+import 'package:flutter_application_1/models/food_item.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -85,5 +86,87 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('登録食品をAIへ送りレシピ候補を読み取る', () async {
+    final now = DateTime.now();
+    final service = AiExpiryService(
+      baseUrl: 'https://example.test/api',
+      client: MockClient((request) async {
+        expect(request.url.path, '/api/suggest-recipes');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final items = body['items'] as List<dynamic>;
+        expect((items.first as Map<String, dynamic>)['name'], '絹ごし豆腐');
+        expect(body['preference'], '15分以内');
+        return http.Response(
+          jsonEncode({
+            'recipes': [
+              {
+                'title': '豆腐のみそ炒め',
+                'description': '豆腐を使い切る一品です。',
+                'cookTimeMinutes': 15,
+                'servings': '2人分',
+                'ingredients': [
+                  {'name': '絹ごし豆腐', 'amount': '1丁', 'available': true},
+                  {'name': 'みそ', 'amount': '大さじ1', 'available': false},
+                ],
+                'steps': ['豆腐を切る', '炒めて味付けする'],
+                'usesRegisteredItems': ['絹ごし豆腐'],
+                'tip': '水切りすると崩れにくくなります。',
+              },
+            ],
+          }),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final item = FoodItem(
+      id: 'tofu',
+      name: '絹ごし豆腐',
+      category: '冷蔵品',
+      expiryDate: now.add(const Duration(days: 2)),
+      registeredAt: now,
+      registeredWithAi: false,
+    );
+
+    final recipes = await service.suggestRecipes([item], preference: '15分以内');
+
+    expect(recipes.single.title, '豆腐のみそ炒め');
+    expect(recipes.single.ingredients.first.available, isTrue);
+    expect(recipes.single.steps, hasLength(2));
+  });
+
+  test('登録食品を踏まえてAIシェフと会話する', () async {
+    final now = DateTime.now();
+    final service = AiExpiryService(
+      baseUrl: 'https://example.test',
+      client: MockClient((request) async {
+        expect(request.url.path, '/recipe-chat');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['items'], isNotEmpty);
+        expect(body['messages'], isNotEmpty);
+        return http.Response(
+          jsonEncode({'reply': 'みそで代用できます。'}),
+          200,
+          headers: const {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final item = FoodItem(
+      id: 'miso',
+      name: 'みそ',
+      category: '調味料',
+      expiryDate: now.add(const Duration(days: 30)),
+      registeredAt: now,
+      registeredWithAi: false,
+    );
+
+    final reply = await service.chatAboutRecipes(
+      [item],
+      const [ProductChatMessage(role: 'user', text: 'しょうゆの代わりは？')],
+    );
+
+    expect(reply, 'みそで代用できます。');
   });
 }

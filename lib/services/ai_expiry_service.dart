@@ -4,6 +4,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
+import '../models/food_item.dart';
+import '../models/recipe_suggestion.dart';
+
 class AiExpiryResult {
   const AiExpiryResult({
     required this.name,
@@ -140,6 +143,77 @@ class AiExpiryService {
     );
   }
 
+  Future<List<RecipeSuggestion>> suggestRecipes(
+    List<FoodItem> items, {
+    String preference = '',
+  }) async {
+    final usableItems = items.where((item) => !item.isConsumed).toList();
+    if (usableItems.isEmpty) {
+      throw const AiExpiryException('レシピに使える食品を先に登録してください');
+    }
+    if (isDemo) return _demoRecipes(usableItems);
+
+    final decoded = await _post(_endpointFor('suggest-recipes'), {
+      'items': _recipeItems(usableItems),
+      'preference': preference.trim(),
+      'today': _dateOnly(DateTime.now()),
+      'locale': 'ja-JP',
+    });
+    final rawRecipes = decoded['recipes'];
+    if (rawRecipes is! List) {
+      throw const AiExpiryException('AIからレシピを読み取れませんでした。もう一度お試しください');
+    }
+    final recipes = rawRecipes
+        .whereType<Map<String, dynamic>>()
+        .map(RecipeSuggestion.fromJson)
+        .where(
+          (recipe) => recipe.title.trim().isNotEmpty && recipe.steps.isNotEmpty,
+        )
+        .toList();
+    if (recipes.isEmpty) {
+      throw const AiExpiryException('条件に合うレシピを作れませんでした。条件を変えてお試しください');
+    }
+    return recipes;
+  }
+
+  Future<String> chatAboutRecipes(
+    List<FoodItem> items,
+    List<ProductChatMessage> messages,
+  ) async {
+    final usableItems = items.where((item) => !item.isConsumed).toList();
+    if (usableItems.isEmpty) {
+      throw const AiExpiryException('相談に使える食品を先に登録してください');
+    }
+    if (messages.isEmpty) throw const AiExpiryException('質問を入力してください');
+    if (isDemo) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      return '登録食材を確認しました。実際のAI接続では、代用品や調理方法を具体的に提案します。';
+    }
+
+    final decoded = await _post(_endpointFor('recipe-chat'), {
+      'items': _recipeItems(usableItems),
+      'messages': messages.map((message) => message.toJson()).toList(),
+      'today': _dateOnly(DateTime.now()),
+      'locale': 'ja-JP',
+    });
+    final reply = decoded['reply'];
+    if (reply is! String || reply.trim().isEmpty) {
+      throw const AiExpiryException('AIからの回答を読み取れませんでした。もう一度お試しください');
+    }
+    return reply.trim();
+  }
+
+  List<Map<String, dynamic>> _recipeItems(List<FoodItem> items) => items
+      .map(
+        (item) => {
+          'name': item.name,
+          'category': item.category,
+          'expiryDate': _dateOnly(item.expiryDate),
+          'daysRemaining': item.daysRemaining,
+        },
+      )
+      .toList();
+
   Uri _endpointFor(String action) {
     final baseUrl = _baseUrl.trim();
     if (baseUrl.isEmpty) {
@@ -155,7 +229,9 @@ class AiExpiryService {
     final segments = uri.pathSegments.where((part) => part.isNotEmpty).toList();
     if (segments.isNotEmpty &&
         (segments.last == 'analyze-expiry' ||
-            segments.last == 'identify-product')) {
+            segments.last == 'identify-product' ||
+            segments.last == 'suggest-recipes' ||
+            segments.last == 'recipe-chat')) {
       segments[segments.length - 1] = action;
     } else {
       segments.add(action);
@@ -240,6 +316,28 @@ class AiExpiryService {
       confidence: .9,
       isDemo: true,
     );
+  }
+
+  Future<List<RecipeSuggestion>> _demoRecipes(List<FoodItem> items) async {
+    await Future<void>.delayed(const Duration(milliseconds: 650));
+    final names = items.take(3).map((item) => item.name).toList();
+    return [
+      RecipeSuggestion(
+        title: '${names.first}のかんたん炒め',
+        description: '登録食材を無駄なく使うデモレシピです。',
+        cookTimeMinutes: 15,
+        servings: '2人分',
+        ingredients: names
+            .map(
+              (name) =>
+                  RecipeIngredient(name: name, amount: '適量', available: true),
+            )
+            .toList(),
+        steps: const ['材料を食べやすい大きさに切ります。', '火が通るまで炒め、味を調えます。'],
+        usesRegisteredItems: names,
+        tip: '実際のAI接続時は、登録内容に合わせて詳しいレシピを生成します。',
+      ),
+    ];
   }
 
   String? _detectDemoProduct(String text) {

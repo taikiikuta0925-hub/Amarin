@@ -123,3 +123,111 @@ test('全モデルが混雑中なら日本語の再試行メッセージを返�
     globalThis.fetch = originalFetch;
   }
 });
+
+test('登録食品から期限切れを除外してレシピを生成する', async () => {
+  const originalFetch = globalThis.fetch;
+  let upstreamBody;
+  globalThis.fetch = async (_url, init) => {
+    upstreamBody = JSON.parse(init.body);
+    return Response.json({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: JSON.stringify({
+                  recipes: [
+                    {
+                      title: '豆腐のみそ炒め',
+                      description: '期限の近い豆腐を使います。',
+                      cookTimeMinutes: 15,
+                      servings: '2人分',
+                      ingredients: [
+                        { name: '豆腐', amount: '1丁', available: true },
+                        { name: 'みそ', amount: '大さじ1', available: true },
+                      ],
+                      steps: ['豆腐を切る', 'みそと炒める'],
+                      usesRegisteredItems: ['豆腐', 'みそ'],
+                      tip: '水切りすると崩れにくくなります。',
+                    },
+                  ],
+                }),
+              },
+            ],
+          },
+        },
+      ],
+    });
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request('https://worker.test/suggest-recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [
+            { name: '豆腐', category: '冷蔵品', daysRemaining: 1 },
+            { name: 'みそ', category: '調味料', daysRemaining: 30 },
+            { name: '古い牛乳', category: '飲み物', daysRemaining: -2 },
+          ],
+          preference: '15分以内',
+          today: '2026-09-17',
+        }),
+      }),
+      { GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'gemini-test' },
+    );
+    const body = await response.json();
+    const prompt = upstreamBody.contents[0].parts[0].text;
+
+    assert.equal(response.status, 200);
+    assert.equal(body.recipes[0].title, '豆腐のみそ炒め');
+    assert.match(prompt, /豆腐/);
+    assert.match(prompt, /みそ/);
+    assert.doesNotMatch(prompt, /古い牛乳/);
+    assert.equal(upstreamBody.generationConfig.maxOutputTokens, 4096);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('登録食品と履歴を使ってAIシェフが回答する', async () => {
+  const originalFetch = globalThis.fetch;
+  let upstreamBody;
+  globalThis.fetch = async (_url, init) => {
+    upstreamBody = JSON.parse(init.body);
+    return Response.json({
+      candidates: [
+        {
+          content: {
+            parts: [{ text: JSON.stringify({ reply: 'みそで味付けできます。' }) }],
+          },
+        },
+      ],
+    });
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request('https://worker.test/recipe-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ name: 'みそ', category: '調味料', daysRemaining: 30 }],
+          messages: [{ role: 'user', text: 'しょうゆなしで作れる？' }],
+          today: '2026-09-17',
+        }),
+      }),
+      { GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'gemini-test' },
+    );
+    const body = await response.json();
+    const prompt = upstreamBody.contents[0].parts[0].text;
+
+    assert.equal(response.status, 200);
+    assert.equal(body.reply, 'みそで味付けできます。');
+    assert.match(prompt, /しょうゆなし/);
+    assert.match(prompt, /みそ/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
