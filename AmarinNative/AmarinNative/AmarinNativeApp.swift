@@ -627,6 +627,12 @@ struct RootView: View {
       AddFlowView { showingAdd = false; tab = .foods }
         .environmentObject(store)
     }
+    .onAppear {
+#if DEBUG
+      if ProcessInfo.processInfo.arguments.contains("--show-rewards") { tab = .points }
+      if ProcessInfo.processInfo.arguments.contains("--show-recipes") { tab = .recipes }
+#endif
+    }
   }
 
   @ViewBuilder

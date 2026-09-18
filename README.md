@@ -9,6 +9,17 @@ Amarin helps people use food before it expires, discover recipes from ingredient
   <img src="docs/screenshots/amarin-home-dark-en.png" width="46%" alt="Amarin home screen in English dark mode">
 </p>
 
+### AI Kitchen and rewards
+
+<p align="center">
+  <img src="docs/screenshots/amarin-ai-kitchen-dark-en.png" width="46%" alt="Amarin AI Kitchen recipe screen">
+  <img src="docs/screenshots/amarin-rewards-dark-ja.png" width="46%" alt="Amarin points, levels, and theme rewards screen">
+</p>
+
+The AI Kitchen turns the current fridge inventory into practical meal ideas instead of generic recipe search results. It prioritizes food approaching its expiry date, distinguishes ingredients already available from items that may need to be purchased, and keeps a conversational chef available for substitutions and follow-up questions.
+
+The reward system separates spendable points from lifetime XP. Points can unlock visual themes and collectible rewards, while lifetime XP preserves long-term progress even after an exchange. Recording food waste applies a clear penalty, creating meaningful feedback without erasing the player's level history.
+
 ## Product highlights
 
 - **Expiry dashboard** — see urgent items first, understand remaining days at a glance, and record whether food was finished or wasted.
