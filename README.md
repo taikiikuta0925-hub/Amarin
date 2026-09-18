@@ -5,15 +5,15 @@
 Amarin helps people use food before it expires, discover recipes from ingredients they already own, and turn lower food waste into a rewarding daily habit. The primary iOS experience is built with SwiftUI and adopts Apple's Liquid Glass design language on supported systems.
 
 <p align="center">
-  <img src="docs/screenshots/amarin-home-light-ja.png" width="46%" alt="Amarin home screen in Japanese light mode">
-  <img src="docs/screenshots/amarin-home-dark-en.png" width="46%" alt="Amarin home screen in English dark mode">
+  <img src="docs/screenshots/amarin-home-light-en-v2.png" width="46%" alt="Amarin home dashboard in English light mode with Gemini Daily and level progress">
+  <img src="docs/screenshots/amarin-home-dark-en-v2.png" width="46%" alt="Amarin home dashboard in English dark mode with adaptive Liquid Glass surfaces">
 </p>
 
 ### AI Kitchen and rewards
 
 <p align="center">
-  <img src="docs/screenshots/amarin-ai-kitchen-dark-en.png" width="46%" alt="Amarin AI Kitchen recipe screen">
-  <img src="docs/screenshots/amarin-rewards-dark-ja.png" width="46%" alt="Amarin points, levels, and theme rewards screen">
+  <img src="docs/screenshots/amarin-ai-kitchen-dark-en-v2.png" width="46%" alt="Amarin AI Kitchen recipe generation and AI chef console">
+  <img src="docs/screenshots/amarin-rewards-dark-en-v2.png" width="46%" alt="Amarin rewards screen with level progress, theme deck, and reward map">
 </p>
 
 The AI Kitchen turns the current fridge inventory into practical meal ideas instead of generic recipe search results. It prioritizes food approaching its expiry date, distinguishes ingredients already available from items that may need to be purchased, and keeps a conversational chef available for substitutions and follow-up questions.
