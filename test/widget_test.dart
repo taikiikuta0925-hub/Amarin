@@ -41,7 +41,7 @@ void main() {
       ),
     );
 
-    expect(find.text('DueBite'), findsOneWidget);
+    expect(find.text('あまりん'), findsOneWidget);
     expect(find.text('テスト牛乳'), findsOneWidget);
     expect(find.text('120 P'), findsOneWidget);
     expect(find.text('あと1日'), findsOneWidget);

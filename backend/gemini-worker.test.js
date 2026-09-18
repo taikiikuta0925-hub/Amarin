@@ -231,3 +231,53 @@ test('登録食品と履歴を使ってAIシェフが回答する', async () => 
     globalThis.fetch = originalFetch;
   }
 });
+
+test('毎日の名言をGeminiで生成する', async () => {
+  const originalFetch = globalThis.fetch;
+  let upstreamBody;
+  globalThis.fetch = async (_url, init) => {
+    upstreamBody = JSON.parse(init.body);
+    return Response.json({
+      candidates: [
+        {
+          content: {
+            parts: [
+              {
+                text: JSON.stringify({
+                  quote: 'ひと皿を救う選択が、明日の食卓を少し豊かにする。',
+                  note: '今日は期限の近いものを一つ、手前へ。',
+                }),
+              },
+            ],
+          },
+        },
+      ],
+    });
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request('https://worker.test/daily-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          today: '2026-09-18',
+          activeCount: 4,
+          rescuedCount: 12,
+        }),
+      }),
+      { GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'gemini-test' },
+    );
+    const body = await response.json();
+    const prompt = upstreamBody.contents[0].parts[0].text;
+
+    assert.equal(response.status, 200);
+    assert.match(body.quote, /ひと皿/);
+    assert.match(body.note, /期限/);
+    assert.match(prompt, /2026-09-18/);
+    assert.match(prompt, /登録食品数: 4/);
+    assert.match(prompt, /食べきった食品数: 12/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

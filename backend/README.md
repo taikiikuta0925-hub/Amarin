@@ -1,4 +1,4 @@
-# DueBite AI API
+# あまりん AI API
 
 FlutterアプリにAPIキーを含めず、Cloudflare Worker経由でGeminiを利用します。
 
@@ -6,6 +6,7 @@ FlutterアプリにAPIキーを含めず、Cloudflare Worker経由でGeminiを�
 - `POST /identify-product`: 会話しながら商品と期限を特定
 - `POST /suggest-recipes`: 登録済みの食材・調味料からレシピを3件生成
 - `POST /recipe-chat`: 登録済み食品を踏まえてAIシェフが料理相談へ回答
+- `POST /daily-quote`: 日付と利用状況から、ホーム用の毎日のひとことを生成
 
 既定モデルは`gemini-3.8-flash`です。混雑による一時エラー時は`gemini-3.5-flash`、`gemini-3.5-flash-lite`の順に自動で切り替えます。`GEMINI_MODEL`と`GEMINI_FALLBACK_MODELS`で変更できます。thinkingトークンも出力料金の対象になるため、公開前に[Gemini APIの料金](https://ai.google.dev/gemini-api/docs/pricing)を確認してください。
 
@@ -38,7 +39,7 @@ FlutterアプリにAPIキーを含めず、Cloudflare Worker経由でGeminiを�
    flutter run --dart-define=AI_API_BASE_URL=https://YOUR-WORKER.workers.dev
    ```
 
-APIキーはFlutterアプリや`wrangler.toml`へ記載しないでください。このリポジトリのアプリは公開済みDueBite Workerを既定値として使い、`AI_API_BASE_URL`で接続先を上書きできます。
+APIキーはFlutterアプリや`wrangler.toml`へ記載しないでください。このリポジトリのアプリは公開済みあまりん Workerを既定値として使い、`AI_API_BASE_URL`で接続先を上書きできます。
 
 ## API形式
 

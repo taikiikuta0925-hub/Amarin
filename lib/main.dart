@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -250,7 +251,7 @@ class DueBiteApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'DueBite',
+      title: 'あまりん',
       theme: _buildDueBiteTheme(Brightness.light),
       darkTheme: _buildDueBiteTheme(Brightness.dark),
       themeMode: ThemeMode.system,
@@ -285,6 +286,7 @@ class ExpiryHome extends StatefulWidget {
 class _ExpiryHomeState extends State<ExpiryHome> {
   final _picker = ImagePicker();
   AiExpiryService get _aiService => widget.aiService;
+  MethodChannel? _liquidGlassChannel;
   late List<FoodItem> _items;
   late int _points;
   late bool _notificationsEnabled;
@@ -571,6 +573,30 @@ class _ExpiryHomeState extends State<ExpiryHome> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  bool get _usesNativeLiquidGlass =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  void _selectPage(int index) {
+    if (_pageIndex == index) return;
+    setState(() => _pageIndex = index);
+    HapticFeedback.selectionClick();
+    _liquidGlassChannel?.invokeMethod<void>('setSelectedIndex', index);
+  }
+
+  void _connectLiquidGlassBar(int viewId) {
+    final channel = MethodChannel('amarin/liquid_glass_bar_$viewId');
+    channel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'tabSelected':
+          final index = call.arguments as int?;
+          if (index != null && mounted) _selectPage(index);
+        case 'addFood':
+          if (mounted) await _showAddMenu();
+      }
+    });
+    _liquidGlassChannel = channel;
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -589,6 +615,7 @@ class _ExpiryHomeState extends State<ExpiryHome> {
     ];
 
     return Scaffold(
+      extendBody: _usesNativeLiquidGlass,
       body: SafeArea(
         bottom: false,
         child: Center(
@@ -598,49 +625,61 @@ class _ExpiryHomeState extends State<ExpiryHome> {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 72,
-        backgroundColor: context.appColors.surface,
-        indicatorColor: context.appColors.orangeSoft,
-        selectedIndex: _pageIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        onDestinationSelected: (index) => setState(() => _pageIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded, color: _orange),
-            label: 'ホーム',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.kitchen_outlined),
-            selectedIcon: Icon(Icons.kitchen_rounded, color: _orange),
-            label: '食品',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book_rounded, color: _orange),
-            label: 'レシピ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.stars_outlined),
-            selectedIcon: Icon(Icons.stars_rounded, color: _orange),
-            label: 'ポイント',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('add-food-button'),
-        heroTag: 'add-food',
-        onPressed: _showAddMenu,
-        backgroundColor: _ink,
-        foregroundColor: Colors.white,
-        elevation: 5,
-        icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text(
-          '食品を登録',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
+      bottomNavigationBar: _usesNativeLiquidGlass
+          ? SizedBox(
+              height: 108,
+              child: UiKitView(
+                viewType: 'amarin/liquid-glass-bar',
+                creationParams: {'selectedIndex': _pageIndex},
+                creationParamsCodec: const StandardMessageCodec(),
+                onPlatformViewCreated: _connectLiquidGlassBar,
+              ),
+            )
+          : NavigationBar(
+              height: 72,
+              backgroundColor: context.appColors.surface,
+              indicatorColor: context.appColors.orangeSoft,
+              selectedIndex: _pageIndex,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              onDestinationSelected: _selectPage,
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded, color: _orange),
+                  label: 'ホーム',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.kitchen_outlined),
+                  selectedIcon: Icon(Icons.kitchen_rounded, color: _orange),
+                  label: '食品',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.menu_book_outlined),
+                  selectedIcon: Icon(Icons.menu_book_rounded, color: _orange),
+                  label: 'レシピ',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.stars_outlined),
+                  selectedIcon: Icon(Icons.stars_rounded, color: _orange),
+                  label: 'ポイント',
+                ),
+              ],
+            ),
+      floatingActionButton: _usesNativeLiquidGlass
+          ? null
+          : FloatingActionButton.extended(
+              key: const Key('add-food-button'),
+              heroTag: 'add-food',
+              onPressed: _showAddMenu,
+              backgroundColor: _ink,
+              foregroundColor: Colors.white,
+              elevation: 5,
+              icon: const Icon(Icons.document_scanner_outlined),
+              label: const Text(
+                '食品を登録',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
     );
   }
 }
@@ -740,7 +779,7 @@ class _HomeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'DueBite',
+                'あまりん',
                 style: TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.w900,
@@ -1138,7 +1177,7 @@ class _WasteTipCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'DueBite ヒント',
+                  'あまりん ヒント',
                   style: TextStyle(
                     color: context.appColors.green,
                     fontWeight: FontWeight.w900,
@@ -1894,10 +1933,7 @@ class PointsPage extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
           sliver: SliverList.list(
             children: [
-              const _PageTitle(
-                title: 'DueBite ポイント',
-                subtitle: '食べきるほど、ちょっとうれしい',
-              ),
+              const _PageTitle(title: 'あまりん ポイント', subtitle: '食べきるほど、ちょっとうれしい'),
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -2109,7 +2145,7 @@ const _demoRewards = [
   _DemoReward(
     icon: '🎨',
     title: 'グリーンテーマ',
-    description: 'DueBiteの限定テーマカラー',
+    description: 'あまりんの限定テーマカラー',
     requiredPoints: 300,
   ),
   _DemoReward(
@@ -2812,7 +2848,7 @@ class _ProductAgentPageState extends State<ProductAgentPage> {
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
             ),
             Text(
-              'DueBite Agent',
+              'あまりん Agent',
               style: TextStyle(color: context.appColors.muted, fontSize: 10),
             ),
           ],

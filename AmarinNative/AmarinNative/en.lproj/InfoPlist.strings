@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "Amarin";
+"NSCameraUsageDescription" = "Amarin uses the camera to read food names and expiry dates with AI.";
+"NSPhotoLibraryUsageDescription" = "Amarin uses photos to read food names and expiry dates with AI.";
