@@ -132,7 +132,7 @@ private final class AmarinLiquidGlassPlatformView: NSObject, FlutterPlatformView
 
     let rootView: AnyView
     if #available(iOS 26.0, *) {
-      rootView = AnyView(AmarinNativeLiquidGlassBar(model: model))
+      rootView = AnyView(AmarinLiquidGlassBar(model: model))
     } else {
       rootView = AnyView(AmarinCompatibleGlassBar(model: model))
     }
@@ -184,7 +184,7 @@ private final class AmarinLiquidGlassBarModel: ObservableObject {
 }
 
 @available(iOS 26.0, *)
-private struct AmarinNativeLiquidGlassBar: View {
+private struct AmarinLiquidGlassBar: View {
   @ObservedObject var model: AmarinLiquidGlassBarModel
 
   private let accent = Color(red: 1.0, green: 0.37, blue: 0.20)

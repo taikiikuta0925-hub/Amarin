@@ -3,8 +3,12 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
+private func uiText(_ english: Bool, _ japanese: String, _ englishText: String) -> String {
+  english ? englishText : japanese
+}
+
 @main
-struct AmarinNativeApp: App {
+struct AmarinApp: App {
   @StateObject private var store = FoodStore()
 
   var body: some Scene {
@@ -33,10 +37,10 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
   }
 
-  var title: LocalizedStringKey {
+  func title(english: Bool) -> String {
     switch self {
-    case .system: "システム設定に合わせる"
-    case .japanese: "日本語"
+    case .system: uiText(english, "システム設定に合わせる", "Follow System Language")
+    case .japanese: uiText(english, "日本語", "Japanese")
     case .english: "English"
     }
   }
@@ -108,6 +112,16 @@ enum RewardCategory: String {
   case badge = "バッジ"
   case effect = "演出"
   case coupon = "クーポン"
+
+  func title(english: Bool) -> String {
+    guard english else { return rawValue }
+    switch self {
+    case .theme: return "Theme"
+    case .badge: return "Badge"
+    case .effect: return "Effect"
+    case .coupon: return "Coupon"
+    }
+  }
 }
 
 struct RewardItem: Identifiable {
@@ -144,6 +158,32 @@ struct RewardItem: Identifiable {
     RewardItem(id: "effect_recipe", category: .effect, icon: "book.pages.fill", title: "Secret Recipe Skin", subtitle: "AIレシピ限定スキン", detail: "AI KITCHENのレシピカードに特別なホログラム演出を追加するコレクションです。", cost: 700, rarity: "MYTHIC", primary: .purple, secondary: .cyan),
     RewardItem(id: "coupon_rescue", category: .coupon, icon: "ticket.fill", title: "レスキュークーポン", subtitle: "協力店で使える予定", detail: "将来、協力店との連携後に提供予定の仮報酬です。現在は交換できません。", cost: 600, rarity: "COMING SOON", primary: .orange, secondary: .red, exchangeable: false),
   ]
+
+  func localizedCopy(english: Bool) -> (title: String, subtitle: String, detail: String) {
+    guard english else { return (title, subtitle, detail) }
+    switch id {
+    case "theme_classic": return (title, "Warm orange", "Amarin's signature theme, inspired by the warmth and friendliness of the family table.")
+    case "theme_aurora": return (title, "Crystal-clear mint", "A limited theme inspired by aurora light. Buttons and selections glow in mint.")
+    case "theme_midnight": return (title, "Deep purple and neon blue", "A futuristic theme born in AI Kitchen that transforms the app accents to purple.")
+    case "theme_sakura": return (title, "Soft cherry-blossom pink", "A seasonal theme inspired by spring ingredients and cherry blossoms in full bloom.")
+    case "theme_forest": return (title, "Deep forest green", "A nature-inspired theme based on deep forests and fresh vegetables, with calm green accents.")
+    case "theme_ocean": return (title, "Clear ocean blue", "A Liquid Glass theme inspired by light passing through water, finished in refreshing blue.")
+    case "theme_mono": return (title, "Refined monochrome", "A minimal theme with restrained color and cool gray accents.")
+    case "theme_harvest": return (title, "Celebratory gold", "A top-tier theme for players who have rescued many food items.")
+    case "badge_seed": return ("First Step", "Food-rescue beginner", "Your first badge, awarded for starting your journey to reduce food waste.")
+    case "badge_streak": return (title, "One-week streak badge", "A fiery streak badge for players who keep managing their food for seven days.")
+    case "effect_spark": return (title, "Rescue sparkle effect", "Celebrate the moment you finish an item with a sparkling collection effect.")
+    case "effect_chime": return (title, "Exclusive achievement sound", "A futuristic chime that plays when you complete a mission.")
+    case "badge_rescue": return (title, "Fridge-protecting hero", "A special badge for players who carefully use every ingredient.")
+    case "badge_amarin": return (title, "Amarin limited badge", "A limited character badge proving that you reduced food waste together with Amarin.")
+    case "effect_confetti": return (title, "Premium celebration effect", "Colorful confetti celebrates level-ups and successful food rescues.")
+    case "effect_cosmos": return (title, "Starry profile frame", "A highest-rarity collection frame with a star field orbiting your profile icon.")
+    case "badge_zero": return (title, "Highest-rank title badge", "A special title reserved for masters who consistently use food without waste.")
+    case "effect_recipe": return (title, "Exclusive AI recipe skin", "Adds a special holographic effect to recipe cards in AI Kitchen.")
+    case "coupon_rescue": return ("Rescue Coupon", "Planned for partner stores", "A preview reward planned for future partner-store integrations. It cannot be redeemed yet.")
+    default: return (title, subtitle, detail)
+    }
+  }
 }
 
 struct PlayerLevel {
@@ -172,6 +212,12 @@ struct PlayerLevel {
       progress = Double(value - start) / Double(end - start)
       pointsToNext = end - value
     }
+  }
+
+  func localizedName(english: Bool) -> String {
+    guard english else { return name }
+    let englishNames = ["Seed", "Sprout", "Leaf", "Bloom", "Harvest", "Bounty", "Earth", "Legend"]
+    return englishNames[max(0, min(level - 1, englishNames.count - 1))]
   }
 }
 
@@ -366,10 +412,17 @@ final class FoodStore: ObservableObject {
           let scheduled = Calendar.current.date(bySettingHour: reminderHour, minute: 0, second: 0, of: targetDay),
           scheduled > Date() else { continue }
         let content = UNMutableNotificationContent()
-        content.title = offset == 0 ? "今日が賞味期限です" : "賞味期限が近づいています"
-        content.body = offset == 0
-          ? "\(item.name)は今日までです。おいしいうちに食べきりましょう。"
-          : "\(item.name)の期限まであと3日です。"
+        if appLanguage.usesEnglish {
+          content.title = offset == 0 ? "Expires Today" : "Expiry Date Approaching"
+          content.body = offset == 0
+            ? "\(item.name) expires today. Enjoy it while it is fresh."
+            : "\(item.name) expires in three days."
+        } else {
+          content.title = offset == 0 ? "今日が賞味期限です" : "賞味期限が近づいています"
+          content.body = offset == 0
+            ? "\(item.name)は今日までです。おいしいうちに食べきりましょう。"
+            : "\(item.name)の期限まであと3日です。"
+        }
         content.sound = .default
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: scheduled)
         try? await center.add(UNNotificationRequest(
@@ -585,13 +638,13 @@ struct AIService {
 enum AppTab: Int, CaseIterable {
   case home, foods, recipes, points, add
 
-  var title: String {
+  func title(english: Bool) -> String {
     switch self {
-    case .home: "ホーム"
-    case .foods: "食品"
-    case .recipes: "レシピ"
-    case .points: "ポイント"
-    case .add: "追加"
+    case .home: uiText(english, "ホーム", "Home")
+    case .foods: uiText(english, "食品", "Food")
+    case .recipes: uiText(english, "レシピ", "Recipes")
+    case .points: uiText(english, "ポイント", "Rewards")
+    case .add: uiText(english, "追加", "Add")
     }
   }
 
@@ -649,25 +702,26 @@ struct RootView: View {
 
 @available(iOS 27.0, *)
 private struct SystemLiquidGlassTabs: View {
+  @EnvironmentObject private var store: FoodStore
   @Binding var selection: AppTab
   @Binding var showingAdd: Bool
   @State private var previousTab: AppTab = .home
 
   var body: some View {
     TabView(selection: $selection) {
-      Tab("ホーム", systemImage: "house.fill", value: AppTab.home) {
+      Tab(AppTab.home.title(english: store.appLanguage.usesEnglish), systemImage: "house.fill", value: AppTab.home) {
         HomeView(onAdd: { showingAdd = true }, onLevelTap: { withAnimation(.snappy) { selection = .points } })
       }
-      Tab("食品", systemImage: "refrigerator.fill", value: AppTab.foods) {
+      Tab(AppTab.foods.title(english: store.appLanguage.usesEnglish), systemImage: "refrigerator.fill", value: AppTab.foods) {
         FoodsView()
       }
-      Tab("レシピ", systemImage: "book.closed.fill", value: AppTab.recipes) {
+      Tab(AppTab.recipes.title(english: store.appLanguage.usesEnglish), systemImage: "book.closed.fill", value: AppTab.recipes) {
         RecipesView()
       }
-      Tab("ポイント", systemImage: "star.circle.fill", value: AppTab.points) {
+      Tab(AppTab.points.title(english: store.appLanguage.usesEnglish), systemImage: "star.circle.fill", value: AppTab.points) {
         PointsView()
       }
-      Tab("追加", systemImage: "plus", value: AppTab.add, role: .prominent) {
+      Tab(AppTab.add.title(english: store.appLanguage.usesEnglish), systemImage: "plus", value: AppTab.add, role: .prominent) {
         Color.amarinBackground.ignoresSafeArea()
       }
     }
@@ -684,6 +738,7 @@ private struct SystemLiquidGlassTabs: View {
 }
 
 struct NativeTabBar: View {
+  @EnvironmentObject private var store: FoodStore
   @Binding var selection: AppTab
   let onAdd: () -> Void
 
@@ -702,7 +757,7 @@ struct NativeTabBar: View {
           }
           .buttonStyle(.glassProminent)
           .tint(.amarinOrange)
-          .accessibilityLabel("食品を登録")
+          .accessibilityLabel(uiText(store.appLanguage.usesEnglish, "食品を登録", "Add food"))
         }
       }
       .padding(.horizontal, 12)
@@ -732,7 +787,7 @@ struct NativeTabBar: View {
           VStack(spacing: 3) {
             Image(systemName: tab.symbol)
               .font(.system(size: 19, weight: selection == tab ? .bold : .semibold))
-            Text(tab.title)
+            Text(tab.title(english: store.appLanguage.usesEnglish))
               .font(.system(size: 9.5, weight: selection == tab ? .bold : .semibold))
               .lineLimit(1)
           }
@@ -775,11 +830,11 @@ struct HomeView: View {
           quickActions
 
           HStack(alignment: .firstTextBaseline) {
-            Text("期限が近い食品")
+            Text(uiText(store.appLanguage.usesEnglish, "期限が近い食品", "Expiring soon"))
               .font(.system(size: 20, weight: .bold, design: .rounded))
             Spacer()
             if !store.activeItems.isEmpty {
-              Text("期限順").font(.caption.bold()).foregroundStyle(.secondary)
+              Text(uiText(store.appLanguage.usesEnglish, "期限順", "By expiry")).font(.caption.bold()).foregroundStyle(.secondary)
             }
           }
 
@@ -809,8 +864,8 @@ struct HomeView: View {
         .background(LinearGradient(colors: store.activeThemeGradient, startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: store.activeTint.opacity(0.28), radius: 12, y: 5)
       VStack(alignment: .leading, spacing: 0) {
-        Text("あまりん").font(.system(size: 21, weight: .bold, design: .rounded))
-        Text("おいしく、むだなく。").font(.caption).foregroundStyle(.secondary)
+        Text(store.appLanguage.usesEnglish ? "Amarin" : "あまりん").font(.system(size: 21, weight: .bold, design: .rounded))
+        Text(uiText(store.appLanguage.usesEnglish, "おいしく、むだなく。", "Enjoy food. Waste less.")).font(.caption).foregroundStyle(.secondary)
       }
       Spacer()
       Button { showingLanguage = true } label: {
@@ -820,38 +875,28 @@ struct HomeView: View {
       }
       .buttonStyle(.plain)
       .amarinGlass(in: Circle())
-      .accessibilityLabel("言語")
+      .accessibilityLabel(uiText(store.appLanguage.usesEnglish, "言語", "Language"))
       let player = PlayerLevel(points: store.lifetimePoints)
       Button(action: onLevelTap) {
-        HStack(spacing: 8) {
-          ZStack {
-            Circle().stroke(store.activeTint.opacity(0.15), lineWidth: 4)
-            Circle()
-              .trim(from: 0, to: max(0.025, player.progress))
-              .stroke(
-                AngularGradient(colors: [store.activeTint, .yellow, store.activeTint], center: .center),
-                style: StrokeStyle(lineWidth: 4, lineCap: .round)
-              )
-              .rotationEffect(.degrees(-90))
-            VStack(spacing: -2) {
-              Text("LV").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
-              Text("\(player.level)").font(.system(size: 16, weight: .black, design: .rounded)).foregroundStyle(.primary)
-            }
+        ZStack {
+          Circle().stroke(store.activeTint.opacity(0.14), lineWidth: 4)
+          Circle()
+            .trim(from: 0, to: max(0.025, player.progress))
+            .stroke(
+              AngularGradient(colors: [store.activeTint, .yellow, store.activeTint], center: .center),
+              style: StrokeStyle(lineWidth: 4, lineCap: .round)
+            )
+            .rotationEffect(.degrees(-90))
+          VStack(spacing: -2) {
+            Text("LV").font(.system(size: 7, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
+            Text("\(player.level)").font(.system(size: 17, weight: .black, design: .rounded)).foregroundStyle(.primary)
           }
-          .frame(width: 44, height: 44)
-
-          VStack(alignment: .leading, spacing: 1) {
-            Text("\(store.points) P").font(.subheadline.bold()).foregroundStyle(.primary)
-            Text(player.isMax ? "MAX RANK" : (store.appLanguage.usesEnglish ? "\(player.pointsToNext) XP TO GO" : "あと\(player.pointsToNext) XP"))
-              .font(.system(size: 8, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
-          }
-          Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
         }
-        .padding(.leading, 7).padding(.trailing, 10).padding(.vertical, 6)
-        .contentShape(Capsule())
+        .frame(width: 48, height: 48)
+        .contentShape(Circle())
       }
       .buttonStyle(.plain)
-      .amarinGlass(in: Capsule())
+      .amarinGlass(in: Circle())
       .accessibilityLabel(store.appLanguage.usesEnglish ? "Level \(player.level), \(store.points) points. Open level page" : "レベル\(player.level)、\(store.points)ポイント。レベルページを開く")
     }
   }
@@ -915,8 +960,8 @@ struct HomeView: View {
 
   private var quickActions: some View {
     HStack(spacing: 10) {
-      ModernActionButton(icon: "camera.viewfinder", title: "AIスキャン", subtitle: "写真から登録", tint: store.activeTint, action: onAdd)
-      ModernActionButton(icon: "sparkles", title: "AIに相談", subtitle: "会話で特定", tint: store.activeSecondaryTint, action: onAdd)
+      ModernActionButton(icon: "camera.viewfinder", title: uiText(store.appLanguage.usesEnglish, "AIスキャン", "AI Scan"), subtitle: uiText(store.appLanguage.usesEnglish, "写真から登録", "Add from photo"), tint: store.activeTint, action: onAdd)
+      ModernActionButton(icon: "sparkles", title: uiText(store.appLanguage.usesEnglish, "AIに相談", "Ask AI"), subtitle: uiText(store.appLanguage.usesEnglish, "会話で特定", "Identify by chat"), tint: store.activeSecondaryTint, action: onAdd)
     }
   }
 
@@ -971,8 +1016,8 @@ struct HomeView: View {
         .frame(width: 56, height: 56)
         .background(store.activeTint.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
       VStack(alignment: .leading, spacing: 4) {
-        Text("まだ空っぽです").font(.headline)
-        Text("写真・AI・手入力ですぐ追加できます").font(.caption).foregroundStyle(.secondary)
+        Text(uiText(store.appLanguage.usesEnglish, "まだ空っぽです", "Your fridge is empty")).font(.headline)
+        Text(uiText(store.appLanguage.usesEnglish, "写真・AI・手入力ですぐ追加できます", "Add an item with a photo, AI, or manual entry.")).font(.caption).foregroundStyle(.secondary)
       }
       Spacer()
       Button(action: onAdd) { Image(systemName: "plus").font(.headline).frame(width: 38, height: 38) }
@@ -1032,43 +1077,49 @@ struct FoodRow: View {
             Image(systemName: "sparkles").foregroundStyle(Color.amarinOrange).font(.caption)
           }
         }
-        Text("\(item.expiryDate.formatted(date: .abbreviated, time: .omitted))・\(item.category)")
+        Text("\(item.expiryDate.formatted(date: .abbreviated, time: .omitted)) · \(localizedCategory(item.category, english: store.appLanguage.usesEnglish))")
           .font(.caption).foregroundStyle(.secondary)
       }
       Spacer()
       VStack(alignment: .trailing, spacing: 5) {
-        Text(dayLabel(item.daysRemaining)).font(.subheadline.bold())
+        Text(dayLabel(item.daysRemaining, english: store.appLanguage.usesEnglish)).font(.subheadline.bold())
           .foregroundStyle(item.daysRemaining <= 3 ? Color.amarinOrange : Color.green)
-        Button("結果を記録") { confirmingConsume = true }
+        Button(uiText(store.appLanguage.usesEnglish, "結果を記録", "Record result")) { confirmingConsume = true }
           .font(.caption.bold()).foregroundStyle(item.daysRemaining < 0 ? .red : .green)
       }
     }
     .padding(15)
     .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     .overlay(RoundedRectangle(cornerRadius: 22).stroke(.primary.opacity(0.08)))
-    .confirmationDialog("食品の結果を記録", isPresented: $confirmingConsume, titleVisibility: .visible) {
-      Button("食べきった！") {
+    .confirmationDialog(uiText(store.appLanguage.usesEnglish, "食品の結果を記録", "Record food result"), isPresented: $confirmingConsume, titleVisibility: .visible) {
+      Button(uiText(store.appLanguage.usesEnglish, "食べきった！", "Finished it!")) {
         recordedLoss = false
         earnedPoints = store.consume(item)
       }
-      Button("ロスしてしまった", role: .destructive) {
+      Button(uiText(store.appLanguage.usesEnglish, "ロスしてしまった", "Food was wasted"), role: .destructive) {
         recordedLoss = true
         earnedPoints = store.markAsWaste(item)
       }
-      Button("キャンセル", role: .cancel) {}
+      Button(uiText(store.appLanguage.usesEnglish, "キャンセル", "Cancel"), role: .cancel) {}
     } message: {
       let points = store.pointsForConsuming(item)
       let penalty = store.pointsForWasting(item)
-      Text("食べきり：+\(points) P\nロス：−\(penalty) P（残高は0未満になりません）")
+      Text(store.appLanguage.usesEnglish
+        ? "Finished: +\(points) P\nWasted: −\(penalty) P (balance never drops below zero)"
+        : "食べきり：+\(points) P\nロス：−\(penalty) P（残高は0未満になりません）")
     }
-    .alert(recordedLoss ? "ロスを記録しました" : "食べきり達成！", isPresented: Binding(
+    .alert(recordedLoss
+      ? uiText(store.appLanguage.usesEnglish, "ロスを記録しました", "Waste recorded")
+      : uiText(store.appLanguage.usesEnglish, "食べきり達成！", "Food rescued!"), isPresented: Binding(
       get: { earnedPoints != nil },
       set: { if !$0 { earnedPoints = nil } }
     )) {
       Button("OK") { earnedPoints = nil }
     } message: {
       let change = earnedPoints ?? 0
-      Text("\(change >= 0 ? "+" : "")\(change) ポイント\n残高 \(store.points) P")
+      Text(store.appLanguage.usesEnglish
+        ? "\(change >= 0 ? "+" : "")\(change) points\nBalance: \(store.points) P"
+        : "\(change >= 0 ? "+" : "")\(change) ポイント\n残高 \(store.points) P")
     }
   }
 }
@@ -1086,8 +1137,10 @@ struct FoodsView: View {
   var body: some View {
     NavigationStack {
       List {
-        Picker("表示", selection: $filter) {
-          Text("期限内").tag(0); Text("記録済み").tag(1); Text("すべて").tag(2)
+        Picker(uiText(store.appLanguage.usesEnglish, "表示", "Display"), selection: $filter) {
+          Text(uiText(store.appLanguage.usesEnglish, "期限内", "Active")).tag(0)
+          Text(uiText(store.appLanguage.usesEnglish, "記録済み", "History")).tag(1)
+          Text(uiText(store.appLanguage.usesEnglish, "すべて", "All")).tag(2)
         }
         .pickerStyle(.segmented).listRowBackground(Color.clear).listRowSeparator(.hidden)
         ForEach(shown) { item in
@@ -1096,26 +1149,32 @@ struct FoodsView: View {
               Text(categoryEmoji(item.category))
               VStack(alignment: .leading) {
                 Text(item.name).bold()
-                Text(item.isLost ? "ロスを記録 · \(item.earnedPoints) P" : "食べきり済み · +\(item.earnedPoints) P")
+                Text(item.isLost
+                  ? uiText(store.appLanguage.usesEnglish, "ロスを記録 · \(item.earnedPoints) P", "Waste recorded · \(item.earnedPoints) P")
+                  : uiText(store.appLanguage.usesEnglish, "食べきり済み · +\(item.earnedPoints) P", "Finished · +\(item.earnedPoints) P"))
                   .font(.caption).foregroundStyle(item.isLost ? .red : .secondary)
               }
               Spacer()
               Image(systemName: item.isLost ? "xmark.circle.fill" : "checkmark.circle.fill")
                 .foregroundStyle(item.isLost ? .red : .green)
             }
-              .swipeActions { Button("削除", role: .destructive) { deleteCandidate = item } }
+              .swipeActions { Button(uiText(store.appLanguage.usesEnglish, "削除", "Delete"), role: .destructive) { deleteCandidate = item } }
           } else {
-            FoodRow(item: item).swipeActions { Button("削除", role: .destructive) { deleteCandidate = item } }
+            FoodRow(item: item).swipeActions { Button(uiText(store.appLanguage.usesEnglish, "削除", "Delete"), role: .destructive) { deleteCandidate = item } }
           }
         }.listRowBackground(Color.clear).listRowSeparator(.hidden)
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
-      .navigationTitle("食品リスト")
-      .confirmationDialog("食品を削除しますか？", isPresented: Binding(get: { deleteCandidate != nil }, set: { if !$0 { deleteCandidate = nil } }), titleVisibility: .visible) {
-        Button("削除", role: .destructive) { if let item = deleteCandidate { store.delete(item) }; deleteCandidate = nil }
-        Button("キャンセル", role: .cancel) { deleteCandidate = nil }
-      } message: { Text(deleteCandidate.map { "\($0.name)を一覧から削除します。" } ?? "") }
+      .navigationTitle(uiText(store.appLanguage.usesEnglish, "食品リスト", "Food List"))
+      .confirmationDialog(uiText(store.appLanguage.usesEnglish, "食品を削除しますか？", "Delete this item?"), isPresented: Binding(get: { deleteCandidate != nil }, set: { if !$0 { deleteCandidate = nil } }), titleVisibility: .visible) {
+        Button(uiText(store.appLanguage.usesEnglish, "削除", "Delete"), role: .destructive) { if let item = deleteCandidate { store.delete(item) }; deleteCandidate = nil }
+        Button(uiText(store.appLanguage.usesEnglish, "キャンセル", "Cancel"), role: .cancel) { deleteCandidate = nil }
+      } message: {
+        Text(deleteCandidate.map {
+          uiText(store.appLanguage.usesEnglish, "\($0.name)を一覧から削除します。", "Remove \($0.name) from the list.")
+        } ?? "")
+      }
     }
   }
 }
@@ -1155,7 +1214,7 @@ struct RecipesView: View {
               HStack {
                 VStack(alignment: .leading, spacing: 2) {
                   Text("AI PROPOSALS").font(.caption2.bold()).tracking(1.6).foregroundStyle(.cyan)
-                  Text("今日の提案").font(.system(size: 22, weight: .bold, design: .rounded))
+                  Text(uiText(store.appLanguage.usesEnglish, "今日の提案", "Today's ideas")).font(.system(size: 22, weight: .bold, design: .rounded))
                 }
                 Spacer()
                 Text("\(recipes.count) RECIPES")
@@ -1219,12 +1278,14 @@ struct RecipesView: View {
         Text("AI KITCHEN")
           .font(.system(size: 36, weight: .black, design: .rounded))
           .tracking(-1.2)
-        Text(usableItems.isEmpty ? "食材を登録すると、AIが献立を設計します。" : "冷蔵庫の\(usableItems.count)品から、次の一皿を設計します。")
+        Text(usableItems.isEmpty
+          ? uiText(store.appLanguage.usesEnglish, "食材を登録すると、AIが献立を設計します。", "Add ingredients and AI will design your next meal.")
+          : uiText(store.appLanguage.usesEnglish, "冷蔵庫の\(usableItems.count)品から、次の一皿を設計します。", "Designing your next dish from \(usableItems.count) fridge items."))
           .font(.subheadline).foregroundStyle(.white.opacity(0.72))
       }
 
       if usableItems.isEmpty {
-        Label("利用できる食材がありません", systemImage: "refrigerator")
+        Label(uiText(store.appLanguage.usesEnglish, "利用できる食材がありません", "No usable ingredients"), systemImage: "refrigerator")
           .font(.caption.bold()).foregroundStyle(.white.opacity(0.75))
       } else {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -1286,13 +1347,13 @@ struct RecipesView: View {
           .frame(width: 34, height: 34)
           .background(.cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 11))
         VStack(alignment: .leading, spacing: 1) {
-          Text("リクエスト").font(.headline)
-          Text("時間・味・気分をAIへ伝える").font(.caption).foregroundStyle(.secondary)
+          Text(uiText(store.appLanguage.usesEnglish, "リクエスト", "Request")).font(.headline)
+          Text(uiText(store.appLanguage.usesEnglish, "時間・味・気分をAIへ伝える", "Tell AI your time, taste, and mood.")).font(.caption).foregroundStyle(.secondary)
         }
       }
 
       HStack(spacing: 10) {
-        TextField("例：15分以内、さっぱり", text: $preference)
+        TextField(uiText(store.appLanguage.usesEnglish, "例：15分以内、さっぱり", "e.g. Light and ready in 15 minutes"), text: $preference)
           .font(.subheadline)
           .padding(.horizontal, 14).padding(.vertical, 13)
           .background(.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 15))
@@ -1305,7 +1366,7 @@ struct RecipesView: View {
       Button { Task { await generate() } } label: {
         HStack(spacing: 10) {
           if loading { ProgressView().tint(.white) } else { Image(systemName: "sparkles") }
-          Text(loading ? "GENERATING..." : "レシピを生成")
+          Text(loading ? "GENERATING..." : uiText(store.appLanguage.usesEnglish, "レシピを生成", "Generate recipes"))
             .font(.system(size: 15, weight: .bold, design: .rounded))
           Spacer()
           if !loading { Image(systemName: "arrow.right").font(.subheadline.bold()) }
@@ -1332,7 +1393,7 @@ struct RecipesView: View {
         }.frame(width: 42, height: 42).shadow(color: .purple.opacity(0.25), radius: 9)
         VStack(alignment: .leading, spacing: 2) {
           Text("AI CHEF CONSOLE").font(.caption2.bold()).tracking(1.2).foregroundStyle(.purple)
-          Text("代用品や作り方を相談").font(.headline)
+          Text(uiText(store.appLanguage.usesEnglish, "代用品や作り方を相談", "Ask about substitutes or steps")).font(.headline)
         }
         Spacer()
         HStack(spacing: 5) {
@@ -1358,12 +1419,12 @@ struct RecipesView: View {
       if chatting {
         HStack(spacing: 8) {
           ProgressView().controlSize(.small).tint(.cyan)
-          Text("AIシェフが考えています").font(.caption).foregroundStyle(.secondary)
+          Text(uiText(store.appLanguage.usesEnglish, "AIシェフが考えています", "AI Chef is thinking")).font(.caption).foregroundStyle(.secondary)
         }
       }
 
       HStack(spacing: 10) {
-        TextField("AIシェフに質問する", text: $chatText)
+        TextField(uiText(store.appLanguage.usesEnglish, "AIシェフに質問する", "Ask AI Chef"), text: $chatText)
           .font(.subheadline)
           .padding(.horizontal, 14).frame(height: 46)
           .background(.primary.opacity(0.055), in: Capsule())
@@ -1376,7 +1437,7 @@ struct RecipesView: View {
         .buttonStyle(.plain)
         .disabled(chatting || chatText.trimmingCharacters(in: .whitespaces).isEmpty || usableItems.isEmpty)
       }
-      Text("アレルギーや加熱状態など、安全性は必ずご自身で確認してください。")
+      Text(uiText(store.appLanguage.usesEnglish, "アレルギーや加熱状態など、安全性は必ずご自身で確認してください。", "Always verify allergies, cooking temperatures, and food safety yourself."))
         .font(.caption2).foregroundStyle(.secondary)
     }
     .padding(17)
@@ -1390,7 +1451,7 @@ struct RecipesView: View {
     do {
       recipes = try await AIService.shared.recipes(items: usableItems, preference: preference, locale: store.appLanguage.apiLocale)
     } catch {
-      self.error = error.localizedDescription
+      self.error = store.appLanguage.usesEnglish ? "AI could not generate recipes. Please try again." : error.localizedDescription
     }
   }
 
@@ -1405,7 +1466,7 @@ struct RecipesView: View {
       let reply = try await AIService.shared.chat(items: usableItems, messages: messages, locale: store.appLanguage.apiLocale)
       withAnimation(.snappy) { messages.append(ChatMessage(role: "assistant", text: reply)) }
     } catch {
-      self.error = error.localizedDescription
+      self.error = store.appLanguage.usesEnglish ? "AI Chef could not reply. Please try again." : error.localizedDescription
     }
   }
 }
@@ -1517,9 +1578,9 @@ struct PointsView: View {
           LazyVStack(alignment: .leading, spacing: 24) {
             Button { showingLevelDetails = true } label: { playerHero }
               .buttonStyle(.plain)
-              .accessibilityLabel("レベルと昇格条件を見る")
+              .accessibilityLabel(uiText(store.appLanguage.usesEnglish, "レベルと昇格条件を見る", "View level and promotion requirements"))
 
-            sectionHeader(eyebrow: "THEME DECK", title: "テーマを選ぶ", detail: "横にスワイプ")
+            sectionHeader(eyebrow: "THEME DECK", title: uiText(store.appLanguage.usesEnglish, "テーマを選ぶ", "Choose a theme"), detail: uiText(store.appLanguage.usesEnglish, "横にスワイプ", "Swipe sideways"))
             TabView(selection: $themePage) {
               ForEach(themes) { reward in
                 ThemeRewardCard(reward: reward) { selectedReward = reward }
@@ -1540,7 +1601,7 @@ struct PointsView: View {
             }
             .frame(maxWidth: .infinity)
 
-            sectionHeader(eyebrow: "REWARD MAP", title: "報酬コレクション", detail: "丸をタップで詳細")
+            sectionHeader(eyebrow: "REWARD MAP", title: uiText(store.appLanguage.usesEnglish, "報酬コレクション", "Reward collection"), detail: uiText(store.appLanguage.usesEnglish, "丸をタップで詳細", "Tap a circle"))
             rewardMap
 
             earnGuide
@@ -1594,14 +1655,16 @@ struct PointsView: View {
           Text("\(store.points)").font(.system(size: 40, weight: .black, design: .rounded))
           Text("P").font(.title3.bold()).opacity(0.7)
         }
-        Text("LEVEL \(player.level) · \(player.name)").font(.caption.bold()).opacity(0.75)
-        Text(player.isMax ? "最高レベルに到達" : "昇格まで \(player.pointsToNext) XP")
+        Text("LEVEL \(player.level) · \(player.localizedName(english: store.appLanguage.usesEnglish))").font(.caption.bold()).opacity(0.75)
+        Text(player.isMax
+          ? uiText(store.appLanguage.usesEnglish, "最高レベルに到達", "Maximum level reached")
+          : uiText(store.appLanguage.usesEnglish, "昇格まで \(player.pointsToNext) XP", "\(player.pointsToNext) XP to next rank"))
           .font(.caption2).opacity(0.65)
       }
       Spacer(minLength: 0)
       VStack(spacing: 4) {
         Image(systemName: "chevron.right").font(.caption.bold())
-        Text("詳細").font(.system(size: 8, weight: .bold))
+        Text(uiText(store.appLanguage.usesEnglish, "詳細", "DETAILS")).font(.system(size: 8, weight: .bold))
       }.opacity(0.70)
     }
     .foregroundStyle(.white)
@@ -1644,20 +1707,20 @@ struct PointsView: View {
   private var earnGuide: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Label("ポイントの集め方", systemImage: "bolt.fill").font(.headline)
+        Label(uiText(store.appLanguage.usesEnglish, "ポイントの集め方", "How to earn points"), systemImage: "bolt.fill").font(.headline)
         Spacer()
         Text("EARN").font(.caption2.bold()).tracking(1).foregroundStyle(store.activeTint)
       }
       HStack(spacing: 8) {
-        earnChip(icon: "clock.fill", points: "+20", label: "期限直前")
-        earnChip(icon: "fork.knife", points: "+15", label: "3日前")
-        earnChip(icon: "leaf.fill", points: "+10", label: "早め")
+        earnChip(icon: "clock.fill", points: "+20", label: uiText(store.appLanguage.usesEnglish, "期限直前", "Due soon"))
+        earnChip(icon: "fork.knife", points: "+15", label: uiText(store.appLanguage.usesEnglish, "3日前", "3 days"))
+        earnChip(icon: "leaf.fill", points: "+10", label: uiText(store.appLanguage.usesEnglish, "早め", "Early"))
       }
       HStack(spacing: 9) {
         Image(systemName: "arrow.down.circle.fill").foregroundStyle(.red)
-        Text("ロスを記録すると −10 P、期限切れは −20 P").font(.caption.bold())
+        Text(uiText(store.appLanguage.usesEnglish, "ロスを記録すると −10 P、期限切れは −20 P", "Waste: −10 P · Expired: −20 P")).font(.caption.bold())
         Spacer()
-        Text("XPは維持").font(.caption2.bold()).foregroundStyle(.secondary)
+        Text(uiText(store.appLanguage.usesEnglish, "XPは維持", "XP stays")).font(.caption2.bold()).foregroundStyle(.secondary)
       }
       .padding(11).background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
     }
@@ -1678,13 +1741,13 @@ struct PointsView: View {
   private var historyCard: some View {
     VStack(alignment: .leading, spacing: 13) {
       HStack {
-        Text("最近のポイント").font(.headline)
+        Text(uiText(store.appLanguage.usesEnglish, "最近のポイント", "Recent points")).font(.headline)
         Spacer()
         Image(systemName: "clock.arrow.circlepath").foregroundStyle(.secondary)
       }
       let history = store.consumedItems.filter { $0.earnedPoints != 0 || $0.isLost }
       if history.isEmpty {
-        Text("食品を食べきると、ここにポイント履歴が表示されます。")
+        Text(uiText(store.appLanguage.usesEnglish, "食品を食べきると、ここにポイント履歴が表示されます。", "Your point history will appear here after you finish food."))
           .font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 6)
       } else {
         ForEach(history.prefix(5)) { item in
@@ -1692,7 +1755,9 @@ struct PointsView: View {
             Text(categoryEmoji(item.category)).frame(width: 36, height: 36).background(.primary.opacity(0.05), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
               Text(item.name).font(.subheadline.bold())
-              Text(item.isLost ? "ロスを記録" : "食べきり達成").font(.caption2).foregroundStyle(item.isLost ? .red : .secondary)
+              Text(item.isLost
+                ? uiText(store.appLanguage.usesEnglish, "ロスを記録", "Waste recorded")
+                : uiText(store.appLanguage.usesEnglish, "食べきり達成", "Food rescued")).font(.caption2).foregroundStyle(item.isLost ? .red : .secondary)
             }
             Spacer()
             Text("\(item.earnedPoints > 0 ? "+" : "")\(item.earnedPoints) P")
@@ -1718,24 +1783,24 @@ private struct LevelDetailView: View {
         VStack(alignment: .leading, spacing: 22) {
           VStack(alignment: .leading, spacing: 10) {
             Text("RANK ROAD").font(.caption2.bold()).tracking(1.7).foregroundStyle(store.activeTint)
-            Text("レベル \(player.level) · \(player.name)")
+            Text(uiText(store.appLanguage.usesEnglish, "レベル \(player.level)", "Level \(player.level)") + " · \(player.localizedName(english: store.appLanguage.usesEnglish))")
               .font(.system(size: 30, weight: .black, design: .rounded))
-            Text("交換してもレベルは下がりません。累計XPは、これまで救った食品の記録です。")
+            Text(uiText(store.appLanguage.usesEnglish, "交換してもレベルは下がりません。累計XPは、これまで救った食品の記録です。", "Redeeming rewards never lowers your level. Lifetime XP records all the food you have rescued."))
               .font(.subheadline).foregroundStyle(.secondary)
           }
 
           HStack(spacing: 10) {
-            rankMetric(icon: "sparkles", value: "\(store.lifetimePoints)", label: "累計XP")
-            rankMetric(icon: "star.fill", value: "\(store.points)", label: "交換ポイント")
-            rankMetric(icon: "trophy.fill", value: "\(player.level)/\(PlayerLevel.thresholds.count)", label: "現在ランク")
+            rankMetric(icon: "sparkles", value: "\(store.lifetimePoints)", label: uiText(store.appLanguage.usesEnglish, "累計XP", "Lifetime XP"))
+            rankMetric(icon: "star.fill", value: "\(store.points)", label: uiText(store.appLanguage.usesEnglish, "交換ポイント", "Points"))
+            rankMetric(icon: "trophy.fill", value: "\(player.level)/\(PlayerLevel.thresholds.count)", label: uiText(store.appLanguage.usesEnglish, "現在ランク", "Current rank"))
           }
 
           if !player.isMax {
             VStack(alignment: .leading, spacing: 9) {
               HStack {
-                Text("次の昇格まで").font(.subheadline.bold())
+                Text(uiText(store.appLanguage.usesEnglish, "次の昇格まで", "Next promotion")).font(.subheadline.bold())
                 Spacer()
-                Text("あと \(player.pointsToNext) XP").font(.subheadline.bold()).foregroundStyle(store.activeTint)
+                Text(uiText(store.appLanguage.usesEnglish, "あと \(player.pointsToNext) XP", "\(player.pointsToNext) XP to go")).font(.subheadline.bold()).foregroundStyle(store.activeTint)
               }
               ProgressView(value: player.progress).tint(store.activeTint)
             }
@@ -1744,7 +1809,7 @@ private struct LevelDetailView: View {
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(.primary.opacity(0.08)))
           }
 
-          Text("昇格ロード").font(.title2.bold())
+          Text(uiText(store.appLanguage.usesEnglish, "昇格ロード", "Rank Road")).font(.title2.bold())
 
           VStack(spacing: 0) {
             ForEach(PlayerLevel.thresholds.indices, id: \.self) { index in
@@ -1769,7 +1834,7 @@ private struct LevelDetailView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                   HStack {
-                    Text("LEVEL \(index + 1) · \(PlayerLevel.names[index])").font(.headline)
+                    Text("LEVEL \(index + 1) · \(levelName(index + 1, english: store.appLanguage.usesEnglish))").font(.headline)
                     if current {
                       Text("CURRENT").font(.system(size: 8, weight: .bold, design: .monospaced)).foregroundStyle(store.activeTint)
                         .padding(.horizontal, 7).padding(.vertical, 4).background(store.activeTint.opacity(0.11), in: Capsule())
@@ -1787,9 +1852,9 @@ private struct LevelDetailView: View {
         .padding(20)
       }
       .background(RadialGradient(colors: [store.activeTint.opacity(0.13), .clear], center: .topLeading, startRadius: 10, endRadius: 430).ignoresSafeArea())
-      .navigationTitle("ランク詳細")
+      .navigationTitle(uiText(store.appLanguage.usesEnglish, "ランク詳細", "Rank Details"))
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar { ToolbarItem(placement: .confirmationAction) { Button("閉じる") { dismiss() } } }
+      .toolbar { ToolbarItem(placement: .confirmationAction) { Button(uiText(store.appLanguage.usesEnglish, "閉じる", "Close")) { dismiss() } } }
     }
   }
 
@@ -1804,15 +1869,27 @@ private struct LevelDetailView: View {
   }
 
   private func rankUnlock(_ index: Int) -> String {
+    if store.appLanguage.usesEnglish {
+      switch index {
+      case 0: return "Unlock point exchange and the Classic theme"
+      case 1: return "Unlock RARE themes and badge exchange"
+      case 2: return "Unlock AI KITCHEN rank effects"
+      case 3: return "Gain access to EPIC collections"
+      case 4: return "Unlock LEGEND rewards and an exclusive profile title"
+      case 5: return "Unlock the Golden Harvest challenge"
+      case 6: return "Gain access to MYTHIC collections"
+      default: return "Highest rank · Certified Amarin Legend"
+      }
+    }
     switch index {
-    case 0: "ポイント交換とClassicテーマが解放"
-    case 1: "RAREテーマ・バッジ交換が解放"
-    case 2: "AI KITCHENランク演出が解放"
-    case 3: "EPICコレクションへの挑戦権"
-    case 4: "LEGEND報酬と限定プロフィール称号"
-    case 5: "Golden Harvestチャレンジが解放"
-    case 6: "MYTHICコレクションへの挑戦権"
-    default: "最高ランク・あまりんレジェンド認定"
+    case 0: return "ポイント交換とClassicテーマが解放"
+    case 1: return "RAREテーマ・バッジ交換が解放"
+    case 2: return "AI KITCHENランク演出が解放"
+    case 3: return "EPICコレクションへの挑戦権"
+    case 4: return "LEGEND報酬と限定プロフィール称号"
+    case 5: return "Golden Harvestチャレンジが解放"
+    case 6: return "MYTHICコレクションへの挑戦権"
+    default: return "最高ランク・あまりんレジェンド認定"
     }
   }
 }
@@ -1823,6 +1900,7 @@ private struct ThemeRewardCard: View {
   let action: () -> Void
 
   var body: some View {
+    let copy = reward.localizedCopy(english: store.appLanguage.usesEnglish)
     Button(action: action) {
       ZStack(alignment: .bottomLeading) {
         LinearGradient(colors: [reward.primary, reward.secondary], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -1834,21 +1912,21 @@ private struct ThemeRewardCard: View {
               .padding(.horizontal, 10).padding(.vertical, 6).background(.white.opacity(0.15), in: Capsule())
             Spacer()
             if store.activeThemeID == reward.id {
-              Label("使用中", systemImage: "checkmark.circle.fill").font(.caption.bold())
+              Label(uiText(store.appLanguage.usesEnglish, "使用中", "ACTIVE"), systemImage: "checkmark.circle.fill").font(.caption.bold())
             } else if store.owns(reward) {
-              Label("所持", systemImage: "checkmark").font(.caption.bold())
+              Label(uiText(store.appLanguage.usesEnglish, "所持", "OWNED"), systemImage: "checkmark").font(.caption.bold())
             }
           }
           Spacer()
           Image(systemName: reward.icon).font(.system(size: 38, weight: .medium))
           VStack(alignment: .leading, spacing: 3) {
-            Text(reward.title).font(.system(size: 25, weight: .bold, design: .rounded))
-            Text(reward.subtitle).font(.subheadline).opacity(0.76)
+            Text(copy.title).font(.system(size: 25, weight: .bold, design: .rounded))
+            Text(copy.subtitle).font(.subheadline).opacity(0.76)
           }
           HStack {
             Label(reward.cost == 0 ? "FREE" : "\(reward.cost) P", systemImage: "star.fill").font(.caption.bold())
             Spacer()
-            Label("詳細", systemImage: "arrow.up.right").font(.caption.bold())
+            Label(uiText(store.appLanguage.usesEnglish, "詳細", "Details"), systemImage: "arrow.up.right").font(.caption.bold())
           }
         }
         .padding(19)
@@ -1870,6 +1948,7 @@ private struct RewardNode: View {
   let action: () -> Void
 
   var body: some View {
+    let copy = reward.localizedCopy(english: store.appLanguage.usesEnglish)
     Button(action: action) {
       VStack(spacing: 9) {
         ZStack {
@@ -1880,8 +1959,10 @@ private struct RewardNode: View {
         }
         .frame(width: 76, height: 76)
         .shadow(color: reward.primary.opacity(0.28), radius: 12, y: 6)
-        Text(reward.title).font(.caption.bold()).lineLimit(1).frame(width: 96)
-        Text(store.owns(reward) ? "獲得済み" : reward.exchangeable ? "\(reward.cost) P" : "準備中")
+        Text(copy.title).font(.caption.bold()).lineLimit(1).frame(width: 96)
+        Text(store.owns(reward)
+          ? uiText(store.appLanguage.usesEnglish, "獲得済み", "OWNED")
+          : reward.exchangeable ? "\(reward.cost) P" : uiText(store.appLanguage.usesEnglish, "準備中", "SOON"))
           .font(.caption2.bold()).foregroundStyle(store.owns(reward) ? .green : .secondary)
       }
       .padding(.vertical, index.isMultiple(of: 2) ? 0 : 20)
@@ -1900,6 +1981,7 @@ private struct RewardDetailView: View {
   private var owned: Bool { store.owns(reward) }
 
   var body: some View {
+    let copy = reward.localizedCopy(english: store.appLanguage.usesEnglish)
     ScrollView {
       VStack(spacing: 22) {
         ZStack {
@@ -1912,22 +1994,22 @@ private struct RewardDetailView: View {
 
         VStack(spacing: 7) {
           Text(reward.rarity).font(.caption2.bold()).tracking(1.5).foregroundStyle(reward.primary)
-          Text(reward.title).font(.system(size: 28, weight: .bold, design: .rounded)).multilineTextAlignment(.center)
-          Text(reward.subtitle).font(.subheadline).foregroundStyle(.secondary)
+          Text(copy.title).font(.system(size: 28, weight: .bold, design: .rounded)).multilineTextAlignment(.center)
+          Text(copy.subtitle).font(.subheadline).foregroundStyle(.secondary)
         }
 
-        Text(reward.detail)
+        Text(copy.detail)
           .font(.body).multilineTextAlignment(.center).foregroundStyle(.secondary)
           .padding(.horizontal, 8)
 
         HStack(spacing: 12) {
-          detailMetric(title: "TYPE", value: reward.category.rawValue)
+          detailMetric(title: "TYPE", value: reward.category.title(english: store.appLanguage.usesEnglish))
           detailMetric(title: "COST", value: reward.cost == 0 ? "FREE" : "\(reward.cost) P")
           detailMetric(title: "BALANCE", value: "\(store.points) P")
         }
 
         if justUnlocked {
-          Label("アンロックしました！", systemImage: "party.popper.fill")
+          Label(uiText(store.appLanguage.usesEnglish, "アンロックしました！", "Unlocked!"), systemImage: "party.popper.fill")
             .font(.headline).foregroundStyle(.green)
             .transition(.scale.combined(with: .opacity))
         }
@@ -1955,13 +2037,15 @@ private struct RewardDetailView: View {
         store.activateTheme(reward)
         dismiss()
       } label: {
-        Label(store.activeThemeID == reward.id ? "このテーマを使用中" : "このテーマを使う", systemImage: store.activeThemeID == reward.id ? "checkmark.circle.fill" : "paintpalette.fill")
+        Label(store.activeThemeID == reward.id
+          ? uiText(store.appLanguage.usesEnglish, "このテーマを使用中", "Theme active")
+          : uiText(store.appLanguage.usesEnglish, "このテーマを使う", "Use this theme"), systemImage: store.activeThemeID == reward.id ? "checkmark.circle.fill" : "paintpalette.fill")
           .frame(maxWidth: .infinity).frame(height: 50)
       }
       .buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 16))
       .disabled(store.activeThemeID == reward.id)
     } else if owned {
-      Label("コレクション獲得済み", systemImage: "checkmark.seal.fill")
+      Label(uiText(store.appLanguage.usesEnglish, "コレクション獲得済み", "Collection owned"), systemImage: "checkmark.seal.fill")
         .font(.headline).foregroundStyle(.green).frame(maxWidth: .infinity).frame(height: 50)
         .background(.green.opacity(0.11), in: RoundedRectangle(cornerRadius: 16))
     } else if !reward.exchangeable {
@@ -1974,7 +2058,9 @@ private struct RewardDetailView: View {
           withAnimation(.spring) { justUnlocked = true }
         }
       } label: {
-        Label(store.points >= reward.cost ? "\(reward.cost) Pで交換" : "あと \(reward.cost - store.points) P", systemImage: store.points >= reward.cost ? "lock.open.fill" : "lock.fill")
+        Label(store.points >= reward.cost
+          ? uiText(store.appLanguage.usesEnglish, "\(reward.cost) Pで交換", "Redeem for \(reward.cost) P")
+          : uiText(store.appLanguage.usesEnglish, "あと \(reward.cost - store.points) P", "Need \(reward.cost - store.points) P"), systemImage: store.points >= reward.cost ? "lock.open.fill" : "lock.fill")
           .frame(maxWidth: .infinity).frame(height: 50)
       }
       .buttonStyle(.borderedProminent).buttonBorderShape(.roundedRectangle(radius: 16))
@@ -1994,11 +2080,11 @@ struct NotificationSettingsView: View {
   private let hours = [8, 9, 12, 18, 20]
   var body: some View {
     NavigationStack { Form {
-      Section { Toggle("通知を受け取る", isOn: $enabled) } footer: { Text("賞味期限の3日前と当日にお知らせします") }
-      Section("通知する時間") { Picker("時刻", selection: $hour) { ForEach(hours, id: \.self) { Text("\($0):00").tag($0) } }.pickerStyle(.segmented).disabled(!enabled) }
-    }.navigationTitle("期限のお知らせ").toolbar {
-      ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } }
-      ToolbarItem(placement: .confirmationAction) { Button("設定を保存") { Task { let granted = enabled ? await store.requestNotifications() : false; store.notificationsEnabled = enabled && granted; store.reminderHour = hour; await store.syncNotifications(); dismiss() } } }
+      Section { Toggle(uiText(store.appLanguage.usesEnglish, "通知を受け取る", "Receive notifications"), isOn: $enabled) } footer: { Text(uiText(store.appLanguage.usesEnglish, "賞味期限の3日前と当日にお知らせします", "Get notified three days before expiry and on the expiry date.")) }
+      Section(uiText(store.appLanguage.usesEnglish, "通知する時間", "Notification time")) { Picker(uiText(store.appLanguage.usesEnglish, "時刻", "Time"), selection: $hour) { ForEach(hours, id: \.self) { Text("\($0):00").tag($0) } }.pickerStyle(.segmented).disabled(!enabled) }
+    }.navigationTitle(uiText(store.appLanguage.usesEnglish, "期限のお知らせ", "Expiry Alerts")).toolbar {
+      ToolbarItem(placement: .cancellationAction) { Button(uiText(store.appLanguage.usesEnglish, "閉じる", "Close")) { dismiss() } }
+      ToolbarItem(placement: .confirmationAction) { Button(uiText(store.appLanguage.usesEnglish, "設定を保存", "Save")) { Task { let granted = enabled ? await store.requestNotifications() : false; store.notificationsEnabled = enabled && granted; store.reminderHour = hour; await store.syncNotifications(); dismiss() } } }
     }.onAppear { enabled = store.notificationsEnabled; hour = store.reminderHour } }
   }
 }
@@ -2021,7 +2107,7 @@ struct LanguageSettingsView: View {
                   .foregroundStyle(store.activeTint)
                   .frame(width: 38, height: 38)
                   .background(store.activeTint.opacity(0.11), in: RoundedRectangle(cornerRadius: 12))
-                Text(language.title)
+                Text(language.title(english: store.appLanguage.usesEnglish))
                   .font(.headline)
                   .foregroundStyle(.primary)
                 Spacer()
@@ -2035,18 +2121,20 @@ struct LanguageSettingsView: View {
             .buttonStyle(.plain)
           }
         } footer: {
-          Text("システム設定を選ぶと、iPhoneの言語に自動で合わせます。")
+          Text(uiText(store.appLanguage.usesEnglish, "システム設定を選ぶと、iPhoneの言語に自動で合わせます。", "Follow System Language automatically matches your iPhone language."))
         }
 
-        Section("表示モード") {
+        Section(uiText(store.appLanguage.usesEnglish, "表示モード", "Appearance")) {
           HStack(spacing: 14) {
             Image(systemName: colorScheme == .dark ? "moon.stars.fill" : "sun.max.fill")
               .foregroundStyle(colorScheme == .dark ? .purple : .orange)
               .frame(width: 38, height: 38)
               .background((colorScheme == .dark ? Color.purple : Color.orange).opacity(0.11), in: RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 2) {
-              Text(colorScheme == .dark ? "ダークモード" : "ライトモード").font(.headline)
-              Text("iPhoneのシステム設定に自動で合わせます").font(.caption).foregroundStyle(.secondary)
+              Text(colorScheme == .dark
+                ? uiText(store.appLanguage.usesEnglish, "ダークモード", "Dark Mode")
+                : uiText(store.appLanguage.usesEnglish, "ライトモード", "Light Mode")).font(.headline)
+              Text(uiText(store.appLanguage.usesEnglish, "iPhoneのシステム設定に自動で合わせます", "Automatically follows your iPhone settings.")).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Text("AUTO").font(.system(size: 9, weight: .bold, design: .monospaced))
@@ -2056,11 +2144,11 @@ struct LanguageSettingsView: View {
           }
         }
       }
-      .navigationTitle("言語")
+      .navigationTitle(uiText(store.appLanguage.usesEnglish, "言語", "Language"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("完了") { dismiss() }
+          Button(uiText(store.appLanguage.usesEnglish, "完了", "Done")) { dismiss() }
         }
       }
     }
@@ -2069,18 +2157,19 @@ struct LanguageSettingsView: View {
 
 struct AddFlowView: View {
   @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var store: FoodStore
   @State private var route = 0
   let onComplete: () -> Void
   var body: some View {
     NavigationStack {
       List {
-        Section { Text("登録方法を選んでください").foregroundStyle(.secondary) }
-        Button { route = 4 } label: { AddChoice(icon: "camera.fill", color: .orange, title: "写真を撮ってAI登録", subtitle: "商品名と賞味期限をAIが読み取ります", badge: "おすすめ") }
-        Button { route = 1 } label: { AddChoice(icon: "photo.on.rectangle", color: .green, title: "アルバムから選ぶ", subtitle: "保存済みの写真をAIで読み取ります") }
-        Button { route = 2 } label: { AddChoice(icon: "bubble.left.and.bubble.right.fill", color: .purple, title: "AIと会話して登録", subtitle: "質問に答えて商品と期限を特定します", badge: "NEW") }
-        Button { route = 3 } label: { AddChoice(icon: "calendar.badge.plus", color: .blue, title: "手入力で登録", subtitle: "商品名と日付を自分で入力します") }
-      }.buttonStyle(.plain).navigationTitle("食品を登録").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("閉じる") { dismiss() } } }
+        Section { Text(uiText(store.appLanguage.usesEnglish, "登録方法を選んでください", "Choose how to add your item.")).foregroundStyle(.secondary) }
+        Button { route = 4 } label: { AddChoice(icon: "camera.fill", color: .orange, title: uiText(store.appLanguage.usesEnglish, "写真を撮ってAI登録", "Scan with Camera"), subtitle: uiText(store.appLanguage.usesEnglish, "商品名と賞味期限をAIが読み取ります", "AI reads the product and expiry date."), badge: uiText(store.appLanguage.usesEnglish, "おすすめ", "RECOMMENDED")) }
+        Button { route = 1 } label: { AddChoice(icon: "photo.on.rectangle", color: .green, title: uiText(store.appLanguage.usesEnglish, "アルバムから選ぶ", "Choose from Photos"), subtitle: uiText(store.appLanguage.usesEnglish, "保存済みの写真をAIで読み取ります", "Analyze a saved photo with AI.")) }
+        Button { route = 2 } label: { AddChoice(icon: "bubble.left.and.bubble.right.fill", color: .purple, title: uiText(store.appLanguage.usesEnglish, "AIと会話して登録", "Identify with AI Chat"), subtitle: uiText(store.appLanguage.usesEnglish, "質問に答えて商品と期限を特定します", "Chat to identify the item and expiry date."), badge: "NEW") }
+        Button { route = 3 } label: { AddChoice(icon: "calendar.badge.plus", color: .blue, title: uiText(store.appLanguage.usesEnglish, "手入力で登録", "Enter Manually"), subtitle: uiText(store.appLanguage.usesEnglish, "商品名と日付を自分で入力します", "Enter the item name and date yourself.")) }
+      }.buttonStyle(.plain).navigationTitle(uiText(store.appLanguage.usesEnglish, "食品を登録", "Add Food")).navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(uiText(store.appLanguage.usesEnglish, "閉じる", "Close")) { dismiss() } } }
         .navigationDestination(isPresented: Binding(get: { route != 0 }, set: { if !$0 { route = 0 } })) {
           if route == 2 { ProductAgentView(onComplete: onComplete) } else { AddFoodView(startWithPhotoPicker: route == 1, startWithCamera: route == 4, onComplete: onComplete) }
         }
@@ -2096,7 +2185,7 @@ private struct AddChoice: View {
 struct ProductAgentView: View {
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var store: FoodStore
-  @State private var messages = [ChatMessage(role: "assistant", text: "一緒に商品を特定しましょう。商品名、種類、パッケージの特徴など、分かることを教えてください。")]
+  @State private var messages: [ChatMessage] = []
   @State private var input = ""
   @State private var sending = false
   @State private var candidate: AIService.ProductResult?
@@ -2104,7 +2193,11 @@ struct ProductAgentView: View {
   @FocusState private var inputFocused: Bool
   let onComplete: () -> Void
 
-  private let suggestions = ["牛乳です", "期限は2026年9月20日", "野菜です"]
+  private var suggestions: [String] {
+    store.appLanguage.usesEnglish
+      ? ["It's milk", "The date is September 20, 2026", "It's a vegetable"]
+      : ["牛乳です", "期限は2026年9月20日", "野菜です"]
+  }
 
   var body: some View {
     ZStack {
@@ -2133,7 +2226,7 @@ struct ProductAgentView: View {
               if sending {
                 HStack(spacing: 10) {
                   ProgressView().tint(.purple)
-                  Text("Geminiが商品を特定しています…")
+                  Text(uiText(store.appLanguage.usesEnglish, "Geminiが商品を特定しています…", "Gemini is identifying your item…"))
                     .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                   Spacer()
                 }
@@ -2168,7 +2261,7 @@ struct ProductAgentView: View {
     .navigationTitle("AI Product Finder")
     .navigationBarTitleDisplayMode(.inline)
     .onAppear {
-      guard messages.count == 1 else { return }
+      guard messages.isEmpty else { return }
       messages = [ChatMessage(
         role: "assistant",
         text: store.appLanguage.usesEnglish
@@ -2191,7 +2284,7 @@ struct ProductAgentView: View {
         Text("GEMINI PRODUCT AGENT").font(.system(size: 11, weight: .heavy, design: .monospaced)).tracking(1)
         HStack(spacing: 5) {
           Circle().fill(.green).frame(width: 7, height: 7)
-          Text("LIVE · 自然な言葉で話しかけてください").font(.caption).foregroundStyle(.secondary)
+          Text(uiText(store.appLanguage.usesEnglish, "LIVE · 自然な言葉で話しかけてください", "LIVE · Speak naturally")).font(.caption).foregroundStyle(.secondary)
         }
       }
       Spacer()
@@ -2234,14 +2327,14 @@ struct ProductAgentView: View {
       }
       VStack(alignment: .leading, spacing: 4) {
         Text(candidate.name).font(.system(size: 25, weight: .bold, design: .rounded))
-        Label("\(candidate.category) · \(date.formatted(date: .abbreviated, time: .omitted))", systemImage: "calendar.badge.checkmark")
+        Label("\(localizedCategory(candidate.category, english: store.appLanguage.usesEnglish)) · \(date.formatted(date: .abbreviated, time: .omitted))", systemImage: "calendar.badge.checkmark")
           .font(.subheadline).opacity(0.84)
       }
       Button {
         store.add(name: candidate.name, category: candidate.category, expiryDate: date, registeredWithAi: true)
         onComplete()
       } label: {
-        Label("この内容で登録", systemImage: "plus.circle.fill")
+        Label(uiText(store.appLanguage.usesEnglish, "この内容で登録", "Add this item"), systemImage: "plus.circle.fill")
           .font(.headline).frame(maxWidth: .infinity).frame(height: 48)
           .foregroundStyle(.green)
           .background(.white, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
@@ -2256,7 +2349,7 @@ struct ProductAgentView: View {
 
   private var composer: some View {
     HStack(spacing: 10) {
-      TextField("例：青いパックの牛乳です", text: $input, axis: .vertical)
+      TextField(uiText(store.appLanguage.usesEnglish, "例：青いパックの牛乳です", "e.g. It's milk in a blue carton"), text: $input, axis: .vertical)
         .lineLimit(1...3)
         .focused($inputFocused)
         .padding(.horizontal, 15).padding(.vertical, 12)
@@ -2290,7 +2383,7 @@ struct ProductAgentView: View {
       messages.append(ChatMessage(role: "assistant", text: result.reply))
       candidate = result.ready ? result : nil
     } catch {
-      self.error = error.localizedDescription
+      self.error = store.appLanguage.usesEnglish ? "Gemini could not identify the item. Please try again." : error.localizedDescription
     }
   }
 }
@@ -2349,7 +2442,11 @@ struct AddFoodView: View {
     self.onComplete = onComplete
   }
 
-  private let categories = ["乳製品", "飲み物", "冷蔵品", "肉・魚", "野菜・果物", "お惣菜", "調味料", "その他"]
+  private var categories: [String] {
+    store.appLanguage.usesEnglish
+      ? ["Dairy", "Drinks", "Refrigerated", "Meat & Fish", "Fruit & Vegetables", "Prepared Food", "Condiments", "Other"]
+      : ["乳製品", "飲み物", "冷蔵品", "肉・魚", "野菜・果物", "お惣菜", "調味料", "その他"]
+  }
 
   var body: some View {
     Form {
@@ -2357,30 +2454,30 @@ struct AddFoodView: View {
           Section { Image(uiImage: image).resizable().scaledToFill().frame(height: 180).clipped().clipShape(RoundedRectangle(cornerRadius: 18)) }
         }
         if startWithPhotoPicker || startWithCamera || imageData != nil {
-          Section("AIで読み取る") {
-            Button { showCamera = true } label: { Label("写真を撮る", systemImage: "camera.fill") }
-            Button { showLibrary = true } label: { Label(analyzing ? "解析しています…" : "アルバムから選ぶ", systemImage: "photo.on.rectangle") }
+          Section(uiText(store.appLanguage.usesEnglish, "AIで読み取る", "Analyze with AI")) {
+            Button { showCamera = true } label: { Label(uiText(store.appLanguage.usesEnglish, "写真を撮る", "Take Photo"), systemImage: "camera.fill") }
+            Button { showLibrary = true } label: { Label(analyzing ? uiText(store.appLanguage.usesEnglish, "解析しています…", "Analyzing…") : uiText(store.appLanguage.usesEnglish, "アルバムから選ぶ", "Choose from Photos"), systemImage: "photo.on.rectangle") }
               .disabled(analyzing)
             if let error { Text(error).font(.footnote).foregroundStyle(.red) }
           }
         }
 
-        Section("食品") {
-          TextField("食品名", text: $name)
-          Picker("カテゴリー", selection: $category) {
+        Section(uiText(store.appLanguage.usesEnglish, "食品", "Food")) {
+          TextField(uiText(store.appLanguage.usesEnglish, "食品名", "Food name"), text: $name)
+          Picker(uiText(store.appLanguage.usesEnglish, "カテゴリー", "Category"), selection: $category) {
             ForEach(categories, id: \.self) { Text($0) }
           }
-          DatePicker("賞味期限", selection: $expiryDate, displayedComponents: .date)
+          DatePicker(uiText(store.appLanguage.usesEnglish, "賞味期限", "Expiry date"), selection: $expiryDate, displayedComponents: .date)
         }
       }
-      .navigationTitle("食品を登録")
+      .navigationTitle(uiText(store.appLanguage.usesEnglish, "食品を登録", "Add Food"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("キャンセル") { dismiss() }
+          Button(uiText(store.appLanguage.usesEnglish, "キャンセル", "Cancel")) { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button("保存") {
+          Button(uiText(store.appLanguage.usesEnglish, "保存", "Save")) {
             store.add(
               name: name.trimmingCharacters(in: .whitespacesAndNewlines),
               category: category,
@@ -2398,7 +2495,11 @@ struct AddFoodView: View {
         CameraPicker { data in imageData = data; Task { await analyze(data) } }
           .ignoresSafeArea()
       }
-      .onAppear { if startWithPhotoPicker { showLibrary = true }; if startWithCamera { showCamera = true } }
+      .onAppear {
+        if store.appLanguage.usesEnglish && category == "その他" { category = "Other" }
+        if startWithPhotoPicker { showLibrary = true }
+        if startWithCamera { showCamera = true }
+      }
   }
 
   private func analyze(_ item: PhotosPickerItem) async {
@@ -2416,14 +2517,14 @@ struct AddFoodView: View {
       expiryDate = result.expiryDate
       registeredWithAi = true
     } catch {
-      self.error = error.localizedDescription
+      self.error = store.appLanguage.usesEnglish ? "AI could not analyze this image. Please try again." : error.localizedDescription
     }
   }
 
   private func analyze(_ data: Data) async {
     analyzing = true; error = nil; defer { analyzing = false }
     do { let result = try await AIService.shared.analyze(imageData: data, locale: store.appLanguage.apiLocale); name = result.name; category = result.category; expiryDate = result.expiryDate; registeredWithAi = true }
-    catch { self.error = error.localizedDescription }
+    catch { self.error = store.appLanguage.usesEnglish ? "AI could not analyze this image. Please try again." : error.localizedDescription }
   }
 }
 
@@ -2510,29 +2611,53 @@ extension DateFormatter {
 
 private func categoryEmoji(_ category: String) -> String {
   switch category {
-  case "乳製品": "🥛"
-  case "飲み物": "🧃"
-  case "冷蔵品": "🧊"
-  case "野菜", "野菜・果物": "🥕"
-  case "お惣菜": "🍱"
-  case "肉・魚": "🐟"
-  case "調味料": "🧂"
+  case "乳製品", "Dairy": "🥛"
+  case "飲み物", "Drinks", "Beverages": "🧃"
+  case "冷蔵品", "Refrigerated": "🧊"
+  case "野菜", "野菜・果物", "Vegetables", "Fruit & Vegetables": "🥕"
+  case "お惣菜", "Prepared Food": "🍱"
+  case "肉・魚", "Meat & Fish": "🐟"
+  case "調味料", "Condiments", "Seasonings": "🧂"
   default: "🍽️"
   }
 }
 
-private func dayLabel(_ days: Int) -> String {
-  if days < 0 { return "期限切れ" }
-  if days == 0 { return "今日まで" }
-  return "あと\(days)日"
+private func localizedCategory(_ category: String, english: Bool) -> String {
+  if english {
+    switch category {
+    case "乳製品": return "Dairy"
+    case "飲み物": return "Drinks"
+    case "冷蔵品": return "Refrigerated"
+    case "肉・魚": return "Meat & Fish"
+    case "野菜", "野菜・果物": return "Fruit & Vegetables"
+    case "お惣菜": return "Prepared Food"
+    case "調味料": return "Condiments"
+    case "その他": return "Other"
+    default: return category
+    }
+  }
+  switch category {
+  case "Dairy": return "乳製品"
+  case "Drinks", "Beverages": return "飲み物"
+  case "Refrigerated": return "冷蔵品"
+  case "Meat & Fish": return "肉・魚"
+  case "Vegetables", "Fruit & Vegetables": return "野菜・果物"
+  case "Prepared Food": return "お惣菜"
+  case "Condiments", "Seasonings": return "調味料"
+  case "Other": return "その他"
+  default: return category
+  }
 }
 
-private func levelName(_ level: Int) -> String {
-  switch level {
-  case 1: "たね"
-  case 2: "芽"
-  case 3: "若葉"
-  case 4: "花"
-  default: "実りマスター"
-  }
+private func dayLabel(_ days: Int, english: Bool) -> String {
+  if days < 0 { return uiText(english, "期限切れ", "Expired") }
+  if days == 0 { return uiText(english, "今日まで", "Due today") }
+  return uiText(english, "あと\(days)日", "\(days)d left")
+}
+
+private func levelName(_ level: Int, english: Bool) -> String {
+  let japanese = ["たね", "めばえ", "若葉", "花", "実り", "豊作", "大地", "レジェンド"]
+  let englishNames = ["Seed", "Sprout", "Leaf", "Bloom", "Harvest", "Bounty", "Earth", "Legend"]
+  let index = max(0, min(level - 1, japanese.count - 1))
+  return english ? englishNames[index] : japanese[index]
 }

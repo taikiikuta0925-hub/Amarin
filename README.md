@@ -35,7 +35,7 @@ The reward system separates spendable points from lifetime XP. Points can unlock
 
 ## Native iOS app
 
-Open `AmarinNative/AmarinNative.xcodeproj` in Xcode, select the **AmarinNative** scheme and an iPhone simulator, then run the project.
+Open `Amarin/Amarin.xcodeproj` in Xcode, select the **Amarin** scheme and an iPhone simulator, then run the project.
 
 Requirements:
 

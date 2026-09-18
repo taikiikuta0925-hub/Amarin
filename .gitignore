@@ -35,6 +35,7 @@ migrate_working_dir/
 backend/.wrangler/
 .wrangler/
 **/xcuserdata/
+.derived-data*/
 
 # Symbolication related
 app.*.symbols

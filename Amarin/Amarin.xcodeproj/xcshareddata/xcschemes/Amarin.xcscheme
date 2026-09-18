@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A10000000000000000000008"
-               BuildableName = "AmarinNative.app"
-               BlueprintName = "AmarinNative"
-               ReferencedContainer = "container:AmarinNative.xcodeproj">
+               BuildableName = "Amarin.app"
+               BlueprintName = "Amarin"
+               ReferencedContainer = "container:Amarin.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -43,9 +43,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A10000000000000000000008"
-            BuildableName = "AmarinNative.app"
-            BlueprintName = "AmarinNative"
-            ReferencedContainer = "container:AmarinNative.xcodeproj">
+            BuildableName = "Amarin.app"
+            BlueprintName = "Amarin"
+            ReferencedContainer = "container:Amarin.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -59,9 +59,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A10000000000000000000008"
-            BuildableName = "AmarinNative.app"
-            BlueprintName = "AmarinNative"
-            ReferencedContainer = "container:AmarinNative.xcodeproj">
+            BuildableName = "Amarin.app"
+            BlueprintName = "Amarin"
+            ReferencedContainer = "container:Amarin.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

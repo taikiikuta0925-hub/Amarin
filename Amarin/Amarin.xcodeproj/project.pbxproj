@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A10000000000000000000001 /* AmarinNativeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* AmarinNativeApp.swift */; };
+		A10000000000000000000001 /* AmarinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* AmarinApp.swift */; };
 		A20000000000000000000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* Localizable.strings */; };
 		A20000000000000000000002 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A10000000000000000000002 /* AmarinNativeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmarinNativeApp.swift; sourceTree = "<group>"; };
-		A10000000000000000000003 /* AmarinNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AmarinNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000002 /* AmarinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmarinApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* Amarin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Amarin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A20000000000000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -33,25 +33,25 @@
 		A10000000000000000000005 = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000006 /* AmarinNative */,
+				A10000000000000000000006 /* Amarin */,
 				A10000000000000000000007 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A10000000000000000000006 /* AmarinNative */ = {
+		A10000000000000000000006 /* Amarin */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000002 /* AmarinNativeApp.swift */,
+				A10000000000000000000002 /* AmarinApp.swift */,
 				A20000000000000000000005 /* Localizable.strings */,
 				A20000000000000000000006 /* InfoPlist.strings */,
 			);
-			path = AmarinNative;
+			path = Amarin;
 			sourceTree = "<group>";
 		};
 		A10000000000000000000007 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000003 /* AmarinNative.app */,
+				A10000000000000000000003 /* Amarin.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -59,9 +59,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A10000000000000000000008 /* AmarinNative */ = {
+		A10000000000000000000008 /* Amarin */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A10000000000000000000009 /* Build configuration list for PBXNativeTarget "AmarinNative" */;
+			buildConfigurationList = A10000000000000000000009 /* Build configuration list for PBXNativeTarget "Amarin" */;
 			buildPhases = (
 				A1000000000000000000000A /* Sources */,
 				A10000000000000000000004 /* Frameworks */,
@@ -71,9 +71,9 @@
 			);
 			dependencies = (
 			);
-			name = AmarinNative;
-			productName = AmarinNative;
-			productReference = A10000000000000000000003 /* AmarinNative.app */;
+			name = Amarin;
+			productName = Amarin;
+			productReference = A10000000000000000000003 /* Amarin.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A1000000000000000000000D /* Build configuration list for PBXProject "AmarinNative" */;
+			buildConfigurationList = A1000000000000000000000D /* Build configuration list for PBXProject "Amarin" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = ja;
 			hasScannedForEncodings = 0;
@@ -105,7 +105,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A10000000000000000000008 /* AmarinNative */,
+				A10000000000000000000008 /* Amarin */,
 			);
 		};
 /* End PBXProject section */
@@ -146,7 +146,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000001 /* AmarinNativeApp.swift in Sources */,
+				A10000000000000000000001 /* AmarinApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,7 +260,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A10000000000000000000009 /* Build configuration list for PBXNativeTarget "AmarinNative" */ = {
+		A10000000000000000000009 /* Build configuration list for PBXNativeTarget "Amarin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A10000000000000000000010 /* Debug */,
@@ -269,7 +269,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A1000000000000000000000D /* Build configuration list for PBXProject "AmarinNative" */ = {
+		A1000000000000000000000D /* Build configuration list for PBXProject "Amarin" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1000000000000000000000E /* Debug */,
