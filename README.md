@@ -9,6 +9,8 @@
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)](Amarin/Amarin.xcodeproj)
 [![iPhone Duo](https://img.shields.io/badge/layout-iPhone%20Duo-6C63FF)](docs/SCREENSHOT_GALLERY.md)
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-F05138?logo=swift&logoColor=white)](Amarin/Amarin/AmarinApp.swift)
+[![Android](https://img.shields.io/badge/platform-Android%20companion-3DDC84?logo=android&logoColor=white)](android/)
+[![Dart](https://img.shields.io/badge/language-Dart-0175C2?logo=dart&logoColor=white)](lib/main.dart)
 [![AI](https://img.shields.io/badge/AI-Gemini-4285F4?logo=google)](backend/gemini-worker.js)
 [![License: MIT](https://img.shields.io/badge/code-MIT-green.svg)](LICENSE)
 [![Gallery](https://img.shields.io/badge/screenshots-66-orange)](docs/SCREENSHOT_GALLERY.md)
@@ -128,7 +130,7 @@ Keep the API key in a Cloudflare secret. Do not add it to the app, repository, o
 
 ## Flutter companion
 
-The repository also includes the original cross-platform Flutter implementation for Android, iOS, web, Windows, macOS, and Linux.
+The repository also includes the original cross-platform Flutter implementation, written in Dart, for Android, iOS, web, Windows, macOS, and Linux.
 
 ```bash
 flutter pub get
