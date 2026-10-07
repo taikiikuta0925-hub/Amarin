@@ -1,6 +1,6 @@
 # Amarin Brand and Media Terms
 
-Copyright © 2026 Taiki Ikuta. All rights reserved.
+Copyright © 2026 BlackShell Technology. All rights reserved.
 
 The MIT License in [`LICENSE`](LICENSE) applies to source code only. It does not grant rights to the Amarin name, logo, app icon, mascot, screenshots, screen recordings, visual identity, marketing copy, or other brand and media assets in this repository.
 

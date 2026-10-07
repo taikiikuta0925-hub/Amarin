@@ -2,6 +2,10 @@
 
 **A native iOS food-expiry companion powered by Gemini AI.**
 
+<p align="center">
+  <img src="docs/brand/amarin-app-icon.png" width="152" alt="Amarin app icon">
+</p>
+
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)](Amarin/Amarin.xcodeproj)
 [![iPhone Duo](https://img.shields.io/badge/layout-iPhone%20Duo-6C63FF)](docs/SCREENSHOT_GALLERY.md)
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-F05138?logo=swift&logoColor=white)](Amarin/Amarin/AmarinApp.swift)
@@ -74,6 +78,14 @@ Amarin includes an adaptive iPhone Duo experience. The same native SwiftUI inter
 | Open | An expanded inner-display layout that gives dashboards, AI Kitchen, registration, and rewards more room. |
 
 Navigation, Japanese and English localization, automatic Light and Dark Mode, food management, AI features, expiry alerts, levels, and rewards are available in both configurations. See the [Duo screenshot gallery](docs/SCREENSHOT_GALLERY.md#device-coverage) for captured closed and open layouts.
+
+<p align="center">
+  <img src="docs/screenshots/gallery-2026/iphone-duo/closed/ja/01-home.png" width="31%" alt="Amarin on the closed iPhone Duo outer display">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/gallery-2026/iphone-duo/open/en/01-home.png" width="61%" alt="Amarin on the open iPhone Duo inner display">
+</p>
+
+<p align="center"><sub>Closed outer display &nbsp;&nbsp;&nbsp;&nbsp; Open inner display</sub></p>
 
 ## Experience map
 
