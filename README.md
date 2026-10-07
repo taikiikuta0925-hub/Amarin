@@ -2,10 +2,6 @@
 
 **A native iOS food-expiry companion powered by Gemini AI.**
 
-<p align="center">
-  <img src="docs/brand/amarin-app-icon.png" width="152" alt="Amarin app icon">
-</p>
-
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)](Amarin/Amarin.xcodeproj)
 [![iPhone Duo](https://img.shields.io/badge/layout-iPhone%20Duo-6C63FF)](docs/SCREENSHOT_GALLERY.md)
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-F05138?logo=swift&logoColor=white)](Amarin/Amarin/AmarinApp.swift)
