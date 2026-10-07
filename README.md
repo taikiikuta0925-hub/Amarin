@@ -2,12 +2,20 @@
 
 **A native iOS food-expiry companion powered by Gemini AI.**
 
+[![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)](Amarin/Amarin.xcodeproj)
+[![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-F05138?logo=swift&logoColor=white)](Amarin/Amarin/AmarinApp.swift)
+[![AI](https://img.shields.io/badge/AI-Gemini-4285F4?logo=google)](backend/gemini-worker.js)
+[![License: MIT](https://img.shields.io/badge/code-MIT-green.svg)](LICENSE)
+[![Gallery](https://img.shields.io/badge/screenshots-66-orange)](docs/SCREENSHOT_GALLERY.md)
+
 Amarin helps people use food before it expires, discover recipes from ingredients they already own, and turn lower food waste into a rewarding daily habit. The primary iOS experience is built with SwiftUI and adopts Apple's Liquid Glass design language on supported systems.
 
 <p align="center">
   <img src="docs/screenshots/amarin-home-light-en-v2.png" width="46%" alt="Amarin home dashboard in English light mode with Gemini Daily and level progress">
   <img src="docs/screenshots/amarin-home-dark-en-v2.png" width="46%" alt="Amarin home dashboard in English dark mode with adaptive Liquid Glass surfaces">
 </p>
+
+Explore the [complete 66-image Xcode screenshot gallery](docs/SCREENSHOT_GALLERY.md), including Japanese and English screens on iPhone 18 Pro plus iPhone Duo in closed and open configurations.
 
 ### AI Kitchen and rewards
 
@@ -44,6 +52,30 @@ Requirements:
 - iOS 26 or later for the newest Liquid Glass presentation
 
 The native target has no Flutter or CocoaPods dependency. Food records, reward progress, selected theme, language, and notification preferences are stored locally with `UserDefaults`.
+
+### Run in Xcode
+
+1. Clone the repository and open `Amarin/Amarin.xcodeproj`.
+2. Select the **Amarin** scheme.
+3. Choose an iPhone simulator or a trusted development device.
+4. Press **Run** (`⌘R`).
+
+The project is verified on iPhone 18 Pro and iPhone Duo simulators. Duo gallery coverage includes its closed outer display and open inner display.
+
+## Experience map
+
+| Area | What it does |
+| --- | --- |
+| Home | Surfaces urgent food, Gemini Daily guidance, quick AI entry, and level progress. |
+| Food | Tracks active, completed, and wasted items with clear expiry status. |
+| AI Kitchen | Builds recipes around the current fridge and supports follow-up chef chat. |
+| Add | Registers food by photo, conversational AI, or manual entry. |
+| Rewards | Turns saved food into points, lifetime XP, themes, badges, and effects. |
+| Alerts | Schedules local reminders three days before expiry and on the expiry date. |
+
+## Design system
+
+Amarin is a native SwiftUI app with adaptive materials, layered gradients, large rounded cards, semantic colors, and system typography. On supported iOS versions it uses Liquid Glass presentation while retaining readable fallbacks on earlier systems. Light and Dark Mode follow the device automatically, and the interface supports both Japanese and English without maintaining separate screen implementations.
 
 ## AI architecture
 
@@ -86,6 +118,26 @@ flutter analyze
 flutter test
 ```
 
+The native target can also be checked from the command line:
+
+```bash
+xcodebuild \
+  -project Amarin/Amarin.xcodeproj \
+  -scheme Amarin \
+  -sdk iphonesimulator \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+## Repository structure
+
+```text
+Amarin/                 Native SwiftUI iOS application
+backend/                Cloudflare Worker and Gemini gateway
+docs/                   Product documentation and screenshot gallery
+lib/                    Flutter companion implementation
+android, ios, web, ...  Flutter platform hosts
+```
+
 ## Privacy and safety
 
 - Food and reward data stays on the device.
@@ -95,3 +147,9 @@ flutter test
 ## Project status
 
 Amarin is an actively developed demo and product prototype. Reward coupons and partner-store benefits are previews and are not redeemable for real-world value.
+
+## License and asset policy
+
+Source code is available under the [MIT License](LICENSE). MIT permits code modification and redistribution when its notice is retained.
+
+Amarin's name, logo, app icon, mascot, screenshots, screen recordings, visual identity, and marketing assets are **not** covered by MIT. They remain All Rights Reserved and may not be copied, modified, remixed, or redistributed without prior written permission. See [Amarin Brand and Media Terms](BRAND-ASSETS-LICENSE.md).

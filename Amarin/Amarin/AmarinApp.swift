@@ -234,10 +234,10 @@ final class FoodStore: ObservableObject {
     didSet { defaults.set(appLanguage.rawValue, forKey: languageKey) }
   }
   @Published var notificationsEnabled = false {
-    didSet { persist() }
+    didSet { if !isLoading { persist() } }
   }
   @Published var reminderHour = 9 {
-    didSet { persist() }
+    didSet { if !isLoading { persist() } }
   }
 
   private let defaults = UserDefaults.standard
@@ -249,9 +249,11 @@ final class FoodStore: ObservableObject {
   private let rewardsKey = "tabekiri_rewards_v1"
   private let activeThemeKey = "tabekiri_active_theme_v1"
   private let languageKey = "amarin_language_v1"
+  private var isLoading = true
 
   init() {
     load()
+    isLoading = false
   }
 
   var activeItems: [FoodItem] {
