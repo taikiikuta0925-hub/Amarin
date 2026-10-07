@@ -3,6 +3,7 @@
 **A native iOS food-expiry companion powered by Gemini AI.**
 
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-black?logo=apple)](Amarin/Amarin.xcodeproj)
+[![iPhone Duo](https://img.shields.io/badge/layout-iPhone%20Duo-6C63FF)](docs/SCREENSHOT_GALLERY.md)
 [![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-F05138?logo=swift&logoColor=white)](Amarin/Amarin/AmarinApp.swift)
 [![AI](https://img.shields.io/badge/AI-Gemini-4285F4?logo=google)](backend/gemini-worker.js)
 [![License: MIT](https://img.shields.io/badge/code-MIT-green.svg)](LICENSE)
@@ -40,6 +41,7 @@ The reward system separates spendable points from lifetime XP. Points can unlock
 - **Smart reminders** — schedule local notifications three days before expiry and again on the expiry date.
 - **Japanese and English** — follow the iPhone language automatically or choose a language inside the app.
 - **Automatic appearance** — follows system Light or Dark Mode with adaptive SwiftUI colors, materials, and Liquid Glass surfaces.
+- **iPhone Duo layouts** — adapts to both the compact closed outer display and the expanded open inner display.
 
 ## Native iOS app
 
@@ -61,6 +63,17 @@ The native target has no Flutter or CocoaPods dependency. Food records, reward p
 4. Press **Run** (`⌘R`).
 
 The project is verified on iPhone 18 Pro and iPhone Duo simulators. Duo gallery coverage includes its closed outer display and open inner display.
+
+### iPhone Duo support
+
+Amarin includes an adaptive iPhone Duo experience. The same native SwiftUI interface responds to both Duo configurations without maintaining a separate app target:
+
+| Duo configuration | Experience |
+| --- | --- |
+| Closed | A compact layout optimized for the outer display, with readable cards and touch targets. |
+| Open | An expanded inner-display layout that gives dashboards, AI Kitchen, registration, and rewards more room. |
+
+Navigation, Japanese and English localization, automatic Light and Dark Mode, food management, AI features, expiry alerts, levels, and rewards are available in both configurations. See the [Duo screenshot gallery](docs/SCREENSHOT_GALLERY.md#device-coverage) for captured closed and open layouts.
 
 ## Experience map
 

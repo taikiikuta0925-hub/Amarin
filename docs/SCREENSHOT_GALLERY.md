@@ -2,6 +2,8 @@
 
 Captured with Xcode on October 7, 2026. The gallery covers all 11 primary product surfaces: Home, Food List, AI Kitchen, Rewards, Add Methods, AI Product Chat, Manual Add, Language Settings, Expiry Alerts, Level Details, and Reward Details.
 
+## Device coverage
+
 | Device | State | Language / appearance | Screens |
 |---|---|---:|---:|
 | iPhone 18 Pro | Standard | English / Dark | 11 |
