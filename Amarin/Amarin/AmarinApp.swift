@@ -1,3 +1,4 @@
+import ActivityKit
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -231,7 +232,18 @@ final class FoodStore: ObservableObject {
   @Published private(set) var redeemedRewardIDs: Set<String> = []
   @Published private(set) var activeThemeID = "theme_classic"
   @Published var appLanguage = AppLanguage.system {
-    didSet { defaults.set(appLanguage.rawValue, forKey: languageKey) }
+    didSet {
+      defaults.set(appLanguage.rawValue, forKey: languageKey)
+      if !isLoading { Task { await syncLiveActivity() } }
+    }
+  }
+  @Published var liveActivitiesEnabled = true {
+    didSet {
+      if !isLoading {
+        persist()
+        Task { await syncLiveActivity() }
+      }
+    }
   }
   @Published var notificationsEnabled = false {
     didSet { if !isLoading { persist() } }
@@ -246,6 +258,7 @@ final class FoodStore: ObservableObject {
   private let lifetimePointsKey = "tabekiri_lifetime_points_v1"
   private let notificationsKey = "tabekiri_notifications_v1"
   private let reminderHourKey = "tabekiri_reminder_hour_v1"
+  private let liveActivitiesKey = "amarin_live_activities_v1"
   private let rewardsKey = "tabekiri_rewards_v1"
   private let activeThemeKey = "tabekiri_active_theme_v1"
   private let languageKey = "amarin_language_v1"
@@ -258,6 +271,10 @@ final class FoodStore: ObservableObject {
 
   var activeItems: [FoodItem] {
     items.filter { !$0.isConsumed }.sorted { $0.expiryDate < $1.expiryDate }
+  }
+
+  var liveActivitiesAvailable: Bool {
+    ExpiryLiveActivityManager.isAuthorized
   }
 
   var consumedItems: [FoodItem] {
@@ -436,6 +453,17 @@ final class FoodStore: ObservableObject {
     }
   }
 
+  func syncLiveActivity() async {
+    let items = activeItems
+    await ExpiryLiveActivityManager.synchronize(
+      item: items.first,
+      urgentCount: items.filter { $0.daysRemaining <= 3 }.count,
+      totalActive: items.count,
+      usesEnglish: appLanguage.usesEnglish,
+      enabled: liveActivitiesEnabled
+    )
+  }
+
   private func storedObject(for key: String) -> Any? {
     defaults.object(forKey: key) ?? defaults.object(forKey: "flutter.\(key)")
   }
@@ -448,6 +476,7 @@ final class FoodStore: ObservableObject {
     appLanguage = AppLanguage(rawValue: defaults.string(forKey: languageKey) ?? "system") ?? .system
     notificationsEnabled = storedObject(for: notificationsKey) as? Bool ?? false
     reminderHour = storedObject(for: reminderHourKey) as? Int ?? 9
+    liveActivitiesEnabled = storedObject(for: liveActivitiesKey) as? Bool ?? true
 
     let raw = storedObject(for: itemsKey) as? String
     if let raw, let data = raw.data(using: .utf8),
@@ -471,11 +500,15 @@ final class FoodStore: ObservableObject {
     defaults.set(notificationsEnabled, forKey: "flutter.\(notificationsKey)")
     defaults.set(reminderHour, forKey: reminderHourKey)
     defaults.set(reminderHour, forKey: "flutter.\(reminderHourKey)")
+    defaults.set(liveActivitiesEnabled, forKey: liveActivitiesKey)
   }
 
   private func persistAndSync() {
     persist()
-    Task { await syncNotifications() }
+    Task {
+      await syncNotifications()
+      await syncLiveActivity()
+    }
   }
 }
 
@@ -688,6 +721,7 @@ struct RootView: View {
       if ProcessInfo.processInfo.arguments.contains("--show-recipes") { tab = .recipes }
 #endif
     }
+    .task { await store.syncLiveActivity() }
   }
 
   @ViewBuilder
@@ -915,7 +949,7 @@ struct HomeView: View {
         .background(.white.opacity(0.16), in: Capsule())
         Spacer()
         Button { showingNotifications = true } label: {
-          Image(systemName: store.notificationsEnabled ? "bell.badge.fill" : "bell")
+          Image(systemName: store.liveActivitiesEnabled ? "dot.radiowaves.left.and.right" : "bell")
             .font(.system(size: 16, weight: .semibold))
             .frame(width: 38, height: 38)
             .background(.white.opacity(0.16), in: Circle())
@@ -2077,17 +2111,88 @@ private struct RewardDetailView: View {
 struct NotificationSettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var store: FoodStore
-  @State private var enabled = false
+  @State private var liveActivities = true
+  @State private var notifications = false
   @State private var hour = 9
   private let hours = [8, 9, 12, 18, 20]
+
   var body: some View {
-    NavigationStack { Form {
-      Section { Toggle(uiText(store.appLanguage.usesEnglish, "通知を受け取る", "Receive notifications"), isOn: $enabled) } footer: { Text(uiText(store.appLanguage.usesEnglish, "賞味期限の3日前と当日にお知らせします", "Get notified three days before expiry and on the expiry date.")) }
-      Section(uiText(store.appLanguage.usesEnglish, "通知する時間", "Notification time")) { Picker(uiText(store.appLanguage.usesEnglish, "時刻", "Time"), selection: $hour) { ForEach(hours, id: \.self) { Text("\($0):00").tag($0) } }.pickerStyle(.segmented).disabled(!enabled) }
-    }.navigationTitle(uiText(store.appLanguage.usesEnglish, "期限のお知らせ", "Expiry Alerts")).toolbar {
-      ToolbarItem(placement: .cancellationAction) { Button(uiText(store.appLanguage.usesEnglish, "閉じる", "Close")) { dismiss() } }
-      ToolbarItem(placement: .confirmationAction) { Button(uiText(store.appLanguage.usesEnglish, "設定を保存", "Save")) { Task { let granted = enabled ? await store.requestNotifications() : false; store.notificationsEnabled = enabled && granted; store.reminderHour = hour; await store.syncNotifications(); dismiss() } } }
-    }.onAppear { enabled = store.notificationsEnabled; hour = store.reminderHour } }
+    NavigationStack {
+      Form {
+        Section {
+          Toggle(isOn: $liveActivities) {
+            Label(
+              uiText(store.appLanguage.usesEnglish, "Live Activityを表示", "Show Live Activity"),
+              systemImage: "dot.radiowaves.left.and.right"
+            )
+          }
+
+          HStack {
+            Label(
+              store.liveActivitiesAvailable
+                ? uiText(store.appLanguage.usesEnglish, "このiPhoneで利用できます", "Available on this iPhone")
+                : uiText(store.appLanguage.usesEnglish, "システム設定で無効です", "Disabled in System Settings"),
+              systemImage: store.liveActivitiesAvailable ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(store.liveActivitiesAvailable ? .green : .orange)
+            Spacer()
+          }
+          .font(.caption.bold())
+        } header: {
+          Text("Live Activity")
+        } footer: {
+          Text(uiText(
+            store.appLanguage.usesEnglish,
+            "期限が最も近い食品をロック画面とDynamic Islandに表示します。食品の追加や食べ切り記録に合わせて自動更新されます。",
+            "Shows the nearest expiry on the Lock Screen and Dynamic Island, and updates when food is added or recorded."
+          ))
+        }
+
+        Section {
+          Toggle(
+            uiText(store.appLanguage.usesEnglish, "通常通知も受け取る", "Also receive notifications"),
+            isOn: $notifications
+          )
+          Picker(uiText(store.appLanguage.usesEnglish, "時刻", "Time"), selection: $hour) {
+            ForEach(hours, id: \.self) { Text("\($0):00").tag($0) }
+          }
+          .pickerStyle(.segmented)
+          .disabled(!notifications)
+        } header: {
+          Text(uiText(store.appLanguage.usesEnglish, "バックアップ通知", "Backup notifications"))
+        } footer: {
+          Text(uiText(
+            store.appLanguage.usesEnglish,
+            "Live ActivityはiOSによって表示時間が制限されます。通常通知を有効にすると、3日前と当日にもお知らせします。",
+            "iOS limits how long a Live Activity remains visible. Enable notifications for additional alerts three days before and on the expiry date."
+          ))
+        }
+      }
+      .navigationTitle(uiText(store.appLanguage.usesEnglish, "期限ライブ表示", "Expiry Live Activity"))
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button(uiText(store.appLanguage.usesEnglish, "閉じる", "Close")) { dismiss() }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button(uiText(store.appLanguage.usesEnglish, "設定を保存", "Save")) {
+            Task {
+              store.liveActivitiesEnabled = liveActivities
+              let granted = notifications ? await store.requestNotifications() : false
+              store.notificationsEnabled = notifications && granted
+              store.reminderHour = hour
+              await store.syncNotifications()
+              await store.syncLiveActivity()
+              dismiss()
+            }
+          }
+        }
+      }
+      .onAppear {
+        liveActivities = store.liveActivitiesEnabled
+        notifications = store.notificationsEnabled
+        hour = store.reminderHour
+      }
+    }
   }
 }
 
