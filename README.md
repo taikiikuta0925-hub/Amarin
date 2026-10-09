@@ -40,7 +40,7 @@ The reward system separates spendable points from lifetime XP. Points can unlock
 - **AI Kitchen** — generate three practical recipes that prioritize registered ingredients nearing expiry, then continue the conversation with an AI chef.
 - **Points and levels** — earn 10–20 points for finishing food before expiry. Waste deducts points while lifetime XP remains intact.
 - **Reward collection** — unlock themes, badges, effects, and preview rewards through a swipeable, game-inspired reward map.
-- **Live Activity** — keep the nearest expiry visible on the Lock Screen and Dynamic Island, with automatic updates after food is added, finished, wasted, or removed.
+- **Live Activity** — start a Lock Screen and Dynamic Island countdown when one day remains, with automatic updates after food is added, finished, wasted, or removed.
 - **Notification fallback** — optionally schedule local alerts three days before expiry and again on the expiry date.
 - **Japanese and English** — follow the iPhone language automatically or choose a language inside the app.
 - **Automatic appearance** — follows system Light or Dark Mode with adaptive SwiftUI colors, materials, and Liquid Glass surfaces.
@@ -95,7 +95,7 @@ Navigation, Japanese and English localization, automatic Light and Dark Mode, fo
 | AI Kitchen | Builds recipes around the current fridge and supports follow-up chef chat. |
 | Add | Registers food by photo, conversational AI, or manual entry. |
 | Rewards | Turns saved food into points, lifetime XP, themes, badges, and effects. |
-| Live Activity & alerts | Shows the nearest expiry on the Lock Screen and Dynamic Island, with optional notification backups three days before and on the expiry date. |
+| Live Activity & alerts | Starts a one-day expiry countdown on the Lock Screen and Dynamic Island, with optional notification backups three days before and on the expiry date. |
 
 ## Design system
 
@@ -103,7 +103,7 @@ Amarin is a native SwiftUI app with adaptive materials, layered gradients, large
 
 ## Live Activity
 
-The native target includes an ActivityKit and WidgetKit extension. Amarin starts a Live Activity for the nearest active food item and keeps its name, expiry date, remaining days, and urgent-item count synchronized with the local food inventory. The compact, expanded Dynamic Island, minimal, and Lock Screen presentations all use the same bilingual activity state.
+The native target includes an ActivityKit and WidgetKit extension. When Amarin opens or returns to the foreground with an active food item one day from expiry, it starts a live countdown and keeps its name, expiry date, remaining time, and urgent-item count synchronized with the local food inventory. Expired items and foods with more than one day remaining do not start an activity. The compact, expanded Dynamic Island, minimal, and Lock Screen presentations all use the same bilingual activity state.
 
 Live Activities are controlled by iOS and have a system-defined display lifetime, so local expiry notifications remain available as an optional backup. No remote push service is required for the current on-device implementation.
 

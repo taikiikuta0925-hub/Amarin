@@ -32,12 +32,7 @@ enum ExpiryLiveActivityManager {
       totalActive: totalActive,
       usesEnglish: usesEnglish
     )
-    let startOfTomorrow = Calendar.current.date(
-      byAdding: .day,
-      value: 1,
-      to: Calendar.current.startOfDay(for: Date())
-    )
-    let content = ActivityContent(state: state, staleDate: startOfTomorrow)
+    let content = ActivityContent(state: state, staleDate: state.countdownEnd)
 
     if let matching = activities.first(where: { $0.attributes.itemID == item.id }) {
       await matching.update(content)

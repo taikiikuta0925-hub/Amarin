@@ -455,9 +455,10 @@ final class FoodStore: ObservableObject {
 
   func syncLiveActivity() async {
     let items = activeItems
+    let countdownItems = items.filter { (0...1).contains($0.daysRemaining) }
     await ExpiryLiveActivityManager.synchronize(
-      item: items.first,
-      urgentCount: items.filter { $0.daysRemaining <= 3 }.count,
+      item: countdownItems.first,
+      urgentCount: countdownItems.count,
       totalActive: items.count,
       usesEnglish: appLanguage.usesEnglish,
       enabled: liveActivitiesEnabled
@@ -695,6 +696,7 @@ enum AppTab: Int, CaseIterable {
 }
 
 struct RootView: View {
+  @Environment(\.scenePhase) private var scenePhase
   @EnvironmentObject private var store: FoodStore
   @State private var tab: AppTab = .home
   @State private var showingAdd = false
@@ -722,6 +724,10 @@ struct RootView: View {
 #endif
     }
     .task { await store.syncLiveActivity() }
+    .onChange(of: scenePhase) { _, phase in
+      guard phase == .active else { return }
+      Task { await store.syncLiveActivity() }
+    }
   }
 
   @ViewBuilder
@@ -2143,8 +2149,8 @@ struct NotificationSettingsView: View {
         } footer: {
           Text(uiText(
             store.appLanguage.usesEnglish,
-            "期限が最も近い食品をロック画面とDynamic Islandに表示します。食品の追加や食べ切り記録に合わせて自動更新されます。",
-            "Shows the nearest expiry on the Lock Screen and Dynamic Island, and updates when food is added or recorded."
+            "期限まであと1日になると、ロック画面とDynamic Islandでカウントダウンします。食品の追加や食べ切り記録に合わせて自動更新されます。",
+            "Starts a countdown on the Lock Screen and Dynamic Island when one day remains, and updates when food is added or recorded."
           ))
         }
 

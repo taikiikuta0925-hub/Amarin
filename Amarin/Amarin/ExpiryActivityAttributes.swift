@@ -11,6 +11,11 @@ nonisolated struct ExpiryActivityAttributes: ActivityAttributes {
     let totalActive: Int
     let usesEnglish: Bool
 
+    var countdownEnd: Date {
+      let startOfExpiryDay = Calendar.current.startOfDay(for: expiryDate)
+      return Calendar.current.date(byAdding: .day, value: 1, to: startOfExpiryDay) ?? expiryDate
+    }
+
     var dayLabel: String {
       if usesEnglish {
         if daysRemaining < 0 { return "Expired" }
@@ -24,7 +29,7 @@ nonisolated struct ExpiryActivityAttributes: ActivityAttributes {
     }
 
     var activityTitle: String {
-      usesEnglish ? "Use it while fresh" : "おいしいうちに食べきろう"
+      usesEnglish ? "Expiry countdown" : "賞味期限までカウントダウン"
     }
 
     var countLabel: String {
